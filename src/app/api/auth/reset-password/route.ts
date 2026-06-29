@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
     try {
         const { email } = await request.json();
-        const supabase = await createClient();
+        const cookieStore = await cookies();
+        const supabase = createClient(cookieStore);
 
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=recovery`,

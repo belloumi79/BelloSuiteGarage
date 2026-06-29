@@ -1,37 +1,39 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabasePublishableKey, supabaseUrl } from '@/lib/supabase/env';
 
-export async function middleware(request: NextRequest) {
+export function createMiddlewareClient(request: NextRequest) {
+    // Create an unmodified response
     let supabaseResponse = NextResponse.next({
-        request,
+        request: {
+            headers: request.headers,
+        },
     });
 
-    const supabase = createServerClient(
-        supabaseUrl(),
-        supabasePublishableKey(),
-        {
-            cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value;
-                },
-                set(name: string, value: string, options: CookieOptions) {
-                    request.cookies.set({ name, value, ...options });
-                    supabaseResponse = NextResponse.next({
-                        request,
-                    });
-                    supabaseResponse.cookies.set({ name, value, ...options });
-                },
-                remove(name: string, options: CookieOptions) {
-                    request.cookies.set({ name, value: '', ...options });
-                    supabaseResponse = NextResponse.next({
-                        request,
-                    });
-                    supabaseResponse.cookies.set({ name, value: '', ...options });
-                },
+    const supabase = createServerClient(supabaseUrl(), supabasePublishableKey(), {
+        cookies: {
+            getAll() {
+                return request.cookies.getAll();
             },
-        }
-    );
+            setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value, options }) =>
+                    request.cookies.set(name, value)
+                );
+                supabaseResponse = NextResponse.next({
+                    request,
+                });
+                cookiesToSet.forEach(({ name, value, options }) =>
+                    supabaseResponse.cookies.set(name, value, options)
+                );
+            },
+        },
+    });
+
+    return { supabase, supabaseResponse };
+}
+
+export async function middleware(request: NextRequest) {
+    const { supabase, supabaseResponse } = createMiddlewareClient(request);
 
     // Refresh session if expired - required for Server Components
     const {
@@ -47,7 +49,6 @@ export async function middleware(request: NextRequest) {
     const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
     if (isProtectedPath && !user) {
-        // Redirect to login for API routes
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

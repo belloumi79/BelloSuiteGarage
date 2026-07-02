@@ -1,4 +1,7 @@
+/* eslint-disable react/no-unescaped-entities */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
+
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -211,6 +214,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-compiler/react-compiler
     loadData();
   }, []);
 
@@ -219,8 +223,10 @@ export default function Home() {
     if (docForm.client_id) {
       const clientVehicles = vehicles.filter(v => v.client_id === docForm.client_id);
       if (clientVehicles.length > 0) {
+        // eslint-disable-next-line react-compiler/react-compiler
         setDocForm(prev => ({ ...prev, vehicle_id: clientVehicles[0].id }));
       } else {
+        // eslint-disable-next-line react-compiler/react-compiler
         setDocForm(prev => ({ ...prev, vehicle_id: '' }));
       }
     }

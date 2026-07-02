@@ -1,13 +1,14 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { checkAndSeed } from '@/lib/seed';
+import { getCurrentGarage } from '@/lib/context';
 
 export async function GET() {
   try {
-    const garage = await checkAndSeed();
-    if (!garage) {
-      return NextResponse.json({ error: 'Failed to find or create garage context' }, { status: 500 });
-    }
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const garage = ctx.garage;
 
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
@@ -143,8 +144,8 @@ export async function GET() {
         method: s.method,
       })),
     });
-  } catch (error: any) {
-    console.error('Dashboard error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Dashboard error:', err);
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

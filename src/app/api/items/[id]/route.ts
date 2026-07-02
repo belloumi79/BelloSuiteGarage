@@ -1,5 +1,7 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 
 export async function PUT(
   request: Request,
@@ -7,7 +9,17 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json();
+
+    const existing = await prisma.items.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
 
     const item = await prisma.items.update({
       where: { id },
@@ -31,8 +43,8 @@ export async function PUT(
     });
 
     return NextResponse.json(item);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -42,9 +54,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const existing = await prisma.items.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
 
     // Check if the item is used in documents
-    const lineCount = await prisma.document_lines.count({ where: { item_id: id } });
+    const lineCount = await prisma.document_lines.count({ where: { item_id: id, garage_id: ctx.garage.id } });
     if (lineCount > 0) {
       // Soft delete/deactivate to keep referential integrity for invoices
       const item = await prisma.items.update({
@@ -56,7 +77,7 @@ export async function DELETE(
 
     await prisma.items.delete({ where: { id } });
     return NextResponse.json({ message: 'Item deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

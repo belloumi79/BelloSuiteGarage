@@ -1,5 +1,7 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 
 export async function GET(
   request: Request,
@@ -7,8 +9,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const client = await prisma.clients.findUnique({
-      where: { id },
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const client = await prisma.clients.findFirst({
+      where: { id, garage_id: ctx.garage.id },
       include: {
         vehicles: true,
         documents: {
@@ -22,8 +27,8 @@ export async function GET(
     }
 
     return NextResponse.json(client);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -33,7 +38,17 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json();
+
+    const existing = await prisma.clients.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
 
     const client = await prisma.clients.update({
       where: { id },
@@ -59,8 +74,8 @@ export async function PUT(
     });
 
     return NextResponse.json(client);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -70,9 +85,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const existing = await prisma.clients.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
 
     // Check if client has linked documents
-    const docCount = await prisma.documents.count({ where: { client_id: id } });
+    const docCount = await prisma.documents.count({ where: { client_id: id, garage_id: ctx.garage.id } });
 
     if (docCount > 0) {
       // Deactivate instead of hard delete to preserve invoice history
@@ -86,7 +110,7 @@ export async function DELETE(
     // Hard delete if no document references exist
     await prisma.clients.delete({ where: { id } });
     return NextResponse.json({ message: 'Client deleted' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

@@ -1,17 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 
 export async function GET(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const start = searchParams.get('start');
     const end = searchParams.get('end');
 
     const whereClause: any = {
-      garage_id: garage.id,
+      garage_id: ctx.garage.id,
     };
 
     if (start && end) {
@@ -45,15 +48,15 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(events);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const { title, description, starts_at, ends_at, client_id, vehicle_id, status, color } = body;
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
 
     const event = await prisma.agenda_events.create({
       data: {
-        garage_id: garage.id,
+        garage_id: ctx.garage.id,
         title,
         description,
         starts_at: new Date(starts_at),
@@ -77,17 +80,25 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(event);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json();
     const { id, title, description, starts_at, ends_at, client_id, vehicle_id, status, color } = body;
 
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+
+    const existing = await prisma.agenda_events.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
     const event = await prisma.agenda_events.update({
       where: { id },
@@ -104,24 +115,32 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json(event);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+
+    const existing = await prisma.agenda_events.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
     await prisma.agenda_events.delete({
       where: { id },
     });
 
     return NextResponse.json({ message: 'Event deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

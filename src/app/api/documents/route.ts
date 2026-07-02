@@ -1,18 +1,21 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status, payment_method } from '@prisma/client';
 
 export async function GET(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || ''; // quote | repair_order | invoice | credit_note
     const search = searchParams.get('search') || '';
 
     const whereClause: any = {
-      garage_id: garage.id,
+      garage_id: ctx.garage.id,
     };
 
     if (type) {
@@ -65,15 +68,15 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(documents);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const {
@@ -91,7 +94,7 @@ export async function POST(request: Request) {
     // Call public.next_document_number helper via prisma queryRaw to get formatted sequence number
     const result: any[] = await prisma.$queryRawUnsafe(
       `SELECT public.next_document_number($1, $2) as num`,
-      garage.id,
+      ctx.garage.id,
       type
     );
     const docNumber = result[0]?.num || `${type.toUpperCase()}-${Date.now()}`;
@@ -117,7 +120,7 @@ export async function POST(request: Request) {
       total_ttc += lineTTC;
 
       return {
-        garage_id: garage.id,
+        garage_id: ctx.garage.id,
         item_id: line.item_id || null,
         line_type: line.line_type || 'part',
         description: line.description || 'Ligne',
@@ -136,7 +139,7 @@ export async function POST(request: Request) {
     // 2. Create the document
     const document = await prisma.documents.create({
       data: {
-        garage_id: garage.id,
+        garage_id: ctx.garage.id,
         type: type as document_type,
         number: docNumber,
         status: (type === 'invoice' ? 'sent' : 'draft') as document_status,
@@ -161,7 +164,7 @@ export async function POST(request: Request) {
         if (line.item_id && line.line_type === 'part') {
           await prisma.stock_movements.create({
             data: {
-              garage_id: garage.id,
+              garage_id: ctx.garage.id,
               item_id: line.item_id,
               movement_type: 'sale_out',
               quantity: Number(line.quantity),
@@ -174,8 +177,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(document);
-  } catch (error: any) {
-    console.error('Error creating document:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Error creating document:', err);
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

@@ -1,5 +1,7 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 
 export async function PUT(
   request: Request,
@@ -7,7 +9,17 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json();
+
+    const existing = await prisma.vehicles.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
+    }
 
     const vehicle = await prisma.vehicles.update({
       where: { id },
@@ -29,8 +41,8 @@ export async function PUT(
     });
 
     return NextResponse.json(vehicle);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -40,9 +52,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const existing = await prisma.vehicles.findFirst({
+      where: { id, garage_id: ctx.garage.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
+    }
 
     // Check if vehicle is referenced by documents
-    const docCount = await prisma.documents.count({ where: { vehicle_id: id } });
+    const docCount = await prisma.documents.count({ where: { vehicle_id: id, garage_id: ctx.garage.id } });
     if (docCount > 0) {
       return NextResponse.json(
         { error: 'Cannot delete vehicle with repair history. Please delete or reassign documents first.' },
@@ -52,7 +73,7 @@ export async function DELETE(
 
     await prisma.vehicles.delete({ where: { id } });
     return NextResponse.json({ message: 'Vehicle deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

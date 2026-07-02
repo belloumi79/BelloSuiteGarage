@@ -1,11 +1,13 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 import { document_status, payment_method } from '@prisma/client';
 
 export async function POST(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const { document_id, amount, method, reference, notes } = body;
@@ -19,8 +21,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'amount must be greater than zero' }, { status: 400 });
     }
 
-    const document = await prisma.documents.findUnique({
-      where: { id: document_id },
+    const document = await prisma.documents.findFirst({
+      where: { id: document_id, garage_id: ctx.garage.id },
     });
 
     if (!document) {
@@ -49,7 +51,7 @@ export async function POST(request: Request) {
     const payment = await prisma.$transaction(async tx => {
       const createdPayment = await tx.payments.create({
         data: {
-          garage_id: garage.id,
+          garage_id: ctx.garage.id,
           document_id,
           amount: paymentAmount,
           method: (method || 'cash') as payment_method,
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
 
       await tx.treasury_entries.create({
         data: {
-          garage_id: garage.id,
+          garage_id: ctx.garage.id,
           entry_date: new Date(),
           direction: 'in',
           amount: paymentAmount,
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(payment);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

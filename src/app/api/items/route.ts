@@ -1,17 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 
 export async function GET(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const type = searchParams.get('type') || ''; // part | labor | service
 
     const whereClause: any = {
-      garage_id: garage.id,
+      garage_id: ctx.garage.id,
       active: true,
     };
 
@@ -38,22 +41,22 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(items);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     if (!body.name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
 
     const item = await prisma.items.create({
       data: {
-        garage_id: garage.id,
+        garage_id: ctx.garage.id,
         category_id: body.category_id || null,
         supplier_id: body.supplier_id || null,
         type: body.type || 'part',
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(item);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

@@ -40,16 +40,23 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    // Protected routes that require authentication
-    const protectedPaths = ['/api/clients', '/api/vehicles', '/api/documents', '/api/items', '/api/payments', '/api/agenda', '/api/dashboard'];
-    const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path));
+    // Protected API routes — return 401 JSON for unauthenticated callers
+    const protectedApiPaths = ['/api/clients', '/api/vehicles', '/api/documents', '/api/items', '/api/payments', '/api/agenda', '/api/dashboard'];
+    const isProtectedApi = protectedApiPaths.some(path => request.nextUrl.pathname.startsWith(path));
+
+    // Protected page routes — redirect unauthenticated visitors to /login
+    const isRootApp = request.nextUrl.pathname === '/';
 
     // Auth routes that should redirect to dashboard if already logged in
-    const authPaths = ['/login', '/signup', '/auth'];
+    const authPaths = ['/login', '/signup', '/reset-password'];
     const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
-    if (isProtectedPath && !user) {
+    if (isProtectedApi && !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (isRootApp && !user) {
+        return NextResponse.redirect(new URL('/login', request.url));
     }
 
     if (isAuthPath && user) {

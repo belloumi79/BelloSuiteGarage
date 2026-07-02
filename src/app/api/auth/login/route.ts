@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ user: data.user, session: data.session });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
     }
 }

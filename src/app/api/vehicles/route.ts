@@ -1,17 +1,19 @@
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 
 export async function GET(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
 
     const vehicles = await prisma.vehicles.findMany({
       where: {
-        garage_id: garage.id,
+        garage_id: ctx.garage.id,
         OR: [
           { plate: { contains: search, mode: 'insensitive' } },
           { make: { contains: search, mode: 'insensitive' } },
@@ -32,22 +34,22 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(vehicles);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const garage = await prisma.garages.findFirst();
-    if (!garage) return NextResponse.json({ error: 'Garage not initialized' }, { status: 400 });
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     if (!body.client_id) return NextResponse.json({ error: 'client_id is required' }, { status: 400 });
 
     const vehicle = await prisma.vehicles.create({
       data: {
-        garage_id: garage.id,
+        garage_id: ctx.garage.id,
         client_id: body.client_id,
         plate: body.plate || '',
         vin: body.vin,
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(vehicle);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

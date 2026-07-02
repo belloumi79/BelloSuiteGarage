@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
 
 export async function GET(
@@ -8,8 +11,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const document = await prisma.documents.findUnique({
-      where: { id },
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const document = await prisma.documents.findFirst({
+      where: { id, garage_id: ctx.garage.id },
       include: {
         clients: {
           select: {
@@ -46,8 +52,8 @@ export async function GET(
     }
 
     return NextResponse.json(document);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -57,11 +63,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json();
     const { transitionTo, status, notes, lines } = body;
 
-    const originalDoc = await prisma.documents.findUnique({
-      where: { id },
+    const originalDoc = await prisma.documents.findFirst({
+      where: { id, garage_id: ctx.garage.id },
       include: { document_lines: true },
     });
 
@@ -160,7 +169,7 @@ export async function PUT(
     }
 
     // B. Handle regular update (status, notes, and lines)
-    let updateData: any = {};
+    const updateData: any = {};
     if (status) updateData.status = status as document_status;
     if (notes !== undefined) updateData.notes = notes;
 
@@ -171,7 +180,7 @@ export async function PUT(
       let total_ttc = 0;
 
       // First, delete old lines
-      await prisma.document_lines.deleteMany({ where: { document_id: id } });
+      await prisma.document_lines.deleteMany({ where: { document_id: id, garage_id: ctx.garage.id } });
 
       // Build new lines list
       const formattedLines = lines.map((line: any, index: number) => {
@@ -224,9 +233,9 @@ export async function PUT(
     });
 
     return NextResponse.json(updatedDocument);
-  } catch (error: any) {
-    console.error('Error updating document:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Error updating document:', err);
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }
 
@@ -236,8 +245,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const document = await prisma.documents.findUnique({
-      where: { id },
+    const ctx = await getCurrentGarage();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const document = await prisma.documents.findFirst({
+      where: { id, garage_id: ctx.garage.id },
     });
 
     if (!document) {
@@ -250,7 +262,7 @@ export async function DELETE(
 
     await prisma.documents.delete({ where: { id } });
     return NextResponse.json({ message: 'Document deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
 }

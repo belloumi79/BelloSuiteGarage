@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma';
  *
  * Must be called from a Route Handler or Server Component (places where
  * cookies are available). Returns `null` when:
+ *   - Environment variables are missing (Supabase not configured)
+ *   - The database is unreachable
  *   - The user is not authenticated (no Supabase session)
  *   - The user has no `garage_members` row
  *   - The garage membership is inactive
@@ -16,26 +18,32 @@ import { prisma } from '@/lib/prisma';
  * the application layer: every handler filters by `ctx.garage.id`.
  */
 export async function getCurrentGarage() {
-    const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
+    try {
+        const cookieStore = await cookies();
+        const supabase = createClient(cookieStore);
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
-    if (!user) return null;
+        if (!user) return null;
 
-    const membership = await prisma.garage_members.findFirst({
-        where: {
-            user_id: user.id,
-            active: true,
-        },
-        include: {
-            garages: true,
-        },
-    });
+        const membership = await prisma.garage_members.findFirst({
+            where: {
+                user_id: user.id,
+                active: true,
+            },
+            include: {
+                garages: true,
+            },
+        });
 
-    if (!membership?.garages) return null;
+        if (!membership?.garages) return null;
 
-    return { user, garage: membership.garages };
+        return { user, garage: membership.garages };
+    } catch {
+        // Missing env vars, DB unreachable, or other infra issues.
+        // Return null so the caller redirects to /login instead of 500-ing.
+        return null;
+    }
 }

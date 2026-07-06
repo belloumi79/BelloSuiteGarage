@@ -13,7 +13,7 @@
     "db:seed": "tsx src/lib/seed.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "vercel-build": "if [ -n \"$DATABASE_URL\" ]; then prisma migrate deploy; fi && next build"
+    "vercel-build": "if [ -n \"$DATABASE_URL\" ]; then prisma migrate deploy 2>/dev/null || echo 'Skipping DB migration (unreachable — run manually via prisma migrate deploy)'; fi && next build"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

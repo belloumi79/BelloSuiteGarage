@@ -2,6 +2,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
+import { clientUpdateSchema } from '@/lib/validations';
 
 export async function GET(
   request: Request,
@@ -43,6 +44,14 @@ export async function PUT(
 
     const body = await request.json();
 
+    const validation = clientUpdateSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
     const existing = await prisma.clients.findFirst({
       where: { id, garage_id: ctx.garage.id },
     });
@@ -53,23 +62,9 @@ export async function PUT(
     const client = await prisma.clients.update({
       where: { id },
       data: {
-        type: body.type,
-        civility: body.civility,
-        first_name: body.first_name,
-        last_name: body.last_name,
-        company_name: body.company_name,
-        email: body.email,
-        phone: body.phone,
-        mobile: body.mobile,
-        address_line1: body.address_line1,
-        address_line2: body.address_line2,
-        postal_code: body.postal_code,
-        city: body.city,
-        tax_id: body.tax_id,
-        notes: body.notes,
-        payment_terms_days: body.payment_terms_days !== undefined ? Number(body.payment_terms_days) : undefined,
-        discount_percent: body.discount_percent !== undefined ? Number(body.discount_percent) : undefined,
-        active: body.active,
+        ...validation.data,
+        payment_terms_days: validation.data.payment_terms_days !== undefined ? Number(validation.data.payment_terms_days) : undefined,
+        discount_percent: validation.data.discount_percent !== undefined ? Number(validation.data.discount_percent) : undefined,
       },
     });
 

@@ -2,7 +2,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
-import { vehicleUpdateSchema } from '@/lib/validations';
+import { agendaUpdateSchema } from '@/lib/validations';
 
 export async function PUT(
   request: Request,
@@ -15,7 +15,7 @@ export async function PUT(
 
     const body = await request.json();
 
-    const validation = vehicleUpdateSchema.safeParse(body);
+    const validation = agendaUpdateSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
@@ -23,23 +23,26 @@ export async function PUT(
       );
     }
 
-    const existing = await prisma.vehicles.findFirst({
+    const existing = await prisma.agenda_events.findFirst({
       where: { id, garage_id: ctx.garage.id },
     });
-    if (!existing) {
-      return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
-    }
+    if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
-    const vehicle = await prisma.vehicles.update({
+    const event = await prisma.agenda_events.update({
       where: { id },
       data: {
-        ...validation.data,
-        year: validation.data.year ?? null,
-        mileage: validation.data.mileage ?? null,
+        title: validation.data.title,
+        description: validation.data.description,
+        starts_at: validation.data.starts_at ? new Date(validation.data.starts_at) : undefined,
+        ends_at: validation.data.ends_at ? new Date(validation.data.ends_at) : undefined,
+        client_id: validation.data.client_id || null,
+        vehicle_id: validation.data.vehicle_id || null,
+        status: validation.data.status,
+        color: validation.data.color,
       },
     });
 
-    return NextResponse.json(vehicle);
+    return NextResponse.json(event);
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
@@ -54,24 +57,14 @@ export async function DELETE(
     const ctx = await getCurrentGarage();
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const existing = await prisma.vehicles.findFirst({
+    const existing = await prisma.agenda_events.findFirst({
       where: { id, garage_id: ctx.garage.id },
     });
-    if (!existing) {
-      return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
-    }
+    if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
-    // Check if vehicle is referenced by documents
-    const docCount = await prisma.documents.count({ where: { vehicle_id: id, garage_id: ctx.garage.id } });
-    if (docCount > 0) {
-      return NextResponse.json(
-        { error: 'Cannot delete vehicle with repair history. Please delete or reassign documents first.' },
-        { status: 400 }
-      );
-    }
+    await prisma.agenda_events.delete({ where: { id } });
 
-    await prisma.vehicles.delete({ where: { id } });
-    return NextResponse.json({ message: 'Vehicle deleted successfully' });
+    return NextResponse.json({ message: 'Event deleted successfully' });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }

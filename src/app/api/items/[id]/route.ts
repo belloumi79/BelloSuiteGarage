@@ -2,6 +2,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
+import { itemUpdateSchema } from '@/lib/validations';
 
 export async function PUT(
   request: Request,
@@ -14,6 +15,14 @@ export async function PUT(
 
     const body = await request.json();
 
+    const validation = itemUpdateSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
     const existing = await prisma.items.findFirst({
       where: { id, garage_id: ctx.garage.id },
     });
@@ -24,21 +33,14 @@ export async function PUT(
     const item = await prisma.items.update({
       where: { id },
       data: {
-        category_id: body.category_id || null,
-        supplier_id: body.supplier_id || null,
-        type: body.type,
-        reference: body.reference,
-        barcode: body.barcode,
-        name: body.name,
-        description: body.description,
-        unit: body.unit,
-        purchase_price: body.purchase_price !== undefined ? Number(body.purchase_price) : undefined,
-        selling_price: body.selling_price !== undefined ? Number(body.selling_price) : undefined,
-        vat_rate: body.vat_rate !== undefined ? Number(body.vat_rate) : undefined,
-        stock_qty: body.stock_qty !== undefined ? Number(body.stock_qty) : undefined,
-        stock_min: body.stock_min !== undefined ? Number(body.stock_min) : undefined,
-        stock_location: body.stock_location,
-        active: body.active,
+        ...validation.data,
+        category_id: validation.data.category_id || null,
+        supplier_id: validation.data.supplier_id || null,
+        purchase_price: validation.data.purchase_price !== undefined ? Number(validation.data.purchase_price) : undefined,
+        selling_price: validation.data.selling_price !== undefined ? Number(validation.data.selling_price) : undefined,
+        vat_rate: validation.data.vat_rate !== undefined ? Number(validation.data.vat_rate) : undefined,
+        stock_qty: validation.data.stock_qty !== undefined ? Number(validation.data.stock_qty) : undefined,
+        stock_min: validation.data.stock_min !== undefined ? Number(validation.data.stock_min) : undefined,
       },
     });
 

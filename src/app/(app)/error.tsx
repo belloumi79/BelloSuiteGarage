@@ -6,10 +6,10 @@ import { AlertTriangle, Wrench } from 'lucide-react';
 
 export default function Error({
   error,
-  unstable_retry,
+  reset,
 }: {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  reset: () => void;
 }) {
   useEffect(() => {
     console.error('[BelloGarage] App error:', error);
@@ -28,7 +28,7 @@ export default function Error({
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
-            onClick={unstable_retry}
+            onClick={reset}
             className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-lg text-sm transition"
           >
             Réessayer

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
+import { documentUpdateSchema } from '@/lib/validations';
 
 export async function GET(
   request: Request,
@@ -67,7 +68,16 @@ export async function PUT(
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { transitionTo, status, notes, lines } = body;
+
+    const validation = documentUpdateSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { transitionTo, status, notes, lines } = validation.data;
 
     const originalDoc = await prisma.documents.findFirst({
       where: { id, garage_id: ctx.garage.id },

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { getErrorMessage } from '@/lib/errors';
 import { stock_movement_type } from '@prisma/client';
+import { stockMovementCreateSchema } from '@/lib/validations';
 
 /**
  * GET /api/stock-movements?item_id=…&type=…&from=…&to=…
@@ -57,19 +58,18 @@ export async function POST(request: Request) {
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { item_id, movement_type, quantity, unit_cost, reference, notes } = body;
 
-    if (!item_id || !quantity || !movement_type) {
+    const validation = stockMovementCreateSchema.safeParse(body);
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'item_id, quantity, and movement_type are required' },
+        { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
+    const { item_id, movement_type, quantity, unit_cost, reference, notes } = validation.data;
+
     const qty = Number(quantity);
-    if (!Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
-    }
 
     // Verify the item belongs to this garage
     const item = await prisma.items.findFirst({

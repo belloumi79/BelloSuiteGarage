@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { document_status, payment_method } from '@prisma/client';
+import { paymentCreateSchema } from '@/lib/validations';
 
 export async function POST(request: Request) {
   try {
@@ -10,16 +11,18 @@ export async function POST(request: Request) {
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { document_id, amount, method, reference, notes } = body;
 
-    if (!document_id || !amount) {
-      return NextResponse.json({ error: 'document_id and amount are required' }, { status: 400 });
+    const validation = paymentCreateSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
+
+    const { document_id, amount, method, reference, notes } = validation.data;
 
     const paymentAmount = Number(amount);
-    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
-      return NextResponse.json({ error: 'amount must be greater than zero' }, { status: 400 });
-    }
 
     const document = await prisma.documents.findFirst({
       where: { id: document_id, garage_id: ctx.garage.id },

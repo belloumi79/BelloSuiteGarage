@@ -3,7 +3,7 @@
 'use client';
 
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Wrench,
   Users,
@@ -31,7 +31,6 @@ import {
   XCircle,
   RefreshCw,
   ExternalLink,
-  Tag
 } from 'lucide-react';
 import {
   AreaChart,
@@ -41,9 +40,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  Legend
 } from 'recharts';
 
 type DocumentLineForm = {
@@ -196,15 +192,16 @@ export default function Home() {
       const agd = await agendaRes.json();
 
       setDashboardData(dash);
-      setClients(cli);
-      setVehicles(veh);
-      setItems(itm);
-      setDocuments(docs);
-      setAgenda(agd);
+      setClients(cli.data ?? cli);
+      setVehicles(veh.data ?? veh);
+      setItems(itm.data ?? itm);
+      setDocuments(docs.data ?? docs);
+      setAgenda(agd.data ?? agd);
 
-      if (cli.length > 0) {
-        setVehicleForm(prev => ({ ...prev, client_id: cli[0].id }));
-        setDocForm(prev => ({ ...prev, client_id: cli[0].id }));
+      const clientList = cli.data ?? cli;
+      if (clientList.length > 0) {
+        setVehicleForm(prev => ({ ...prev, client_id: clientList[0].id }));
+        setDocForm(prev => ({ ...prev, client_id: clientList[0].id }));
       }
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -213,24 +210,24 @@ export default function Home() {
     }
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    // eslint-disable-next-line react-compiler/react-compiler
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Recalculate linked vehicles when client changes in document builder
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (docForm.client_id) {
       const clientVehicles = vehicles.filter(v => v.client_id === docForm.client_id);
       if (clientVehicles.length > 0) {
-        // eslint-disable-next-line react-compiler/react-compiler
         setDocForm(prev => ({ ...prev, vehicle_id: clientVehicles[0].id }));
-      } else {
-        // eslint-disable-next-line react-compiler/react-compiler
-        setDocForm(prev => ({ ...prev, vehicle_id: '' }));
       }
     }
   }, [docForm.client_id, vehicles]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Handle Client Creation
   const handleClientSubmit = async (e: React.FormEvent) => {
@@ -488,7 +485,7 @@ export default function Home() {
   const handleAgendaDelete = async (id: string) => {
     if (!confirm('Voulez-vous supprimer ce rendez-vous ?')) return;
     try {
-      const res = await fetch(`/api/agenda?id=${id}`, {
+      const res = await fetch(`/api/agenda/${id}`, {
         method: 'DELETE'
       });
       if (res.ok) {

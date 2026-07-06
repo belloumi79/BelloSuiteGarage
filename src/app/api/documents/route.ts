@@ -3,7 +3,8 @@ import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
-import { document_type, document_status, payment_method } from '@prisma/client';
+import { document_type, document_status } from '@prisma/client';
+import { documentCreateSchema, documentLineSchema } from '@/lib/validations';
 
 export async function GET(request: Request) {
   try {
@@ -11,63 +12,70 @@ export async function GET(request: Request) {
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type') || ''; // quote | repair_order | invoice | credit_note
+    const type = searchParams.get('type') || '';
     const search = searchParams.get('search') || '';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(200, Math.max(1, parseInt(searchParams.get('pageSize') || '50', 10)));
 
-    const whereClause: any = {
+    const where: Record<string, unknown> = {
       garage_id: ctx.garage.id,
     };
 
     if (type) {
-      whereClause.type = type as document_type;
+      where.type = type as document_type;
     }
 
     if (search) {
-      whereClause.OR = [
-        { number: { contains: search, mode: 'insensitive' } },
-        { clients: { last_name: { contains: search, mode: 'insensitive' } } },
-        { clients: { first_name: { contains: search, mode: 'insensitive' } } },
-        { vehicles: { plate: { contains: search, mode: 'insensitive' } } },
+      where.OR = [
+        { number: { contains: search, mode: 'insensitive' as const } },
+        { clients: { last_name: { contains: search, mode: 'insensitive' as const } } },
+        { clients: { first_name: { contains: search, mode: 'insensitive' as const } } },
+        { vehicles: { plate: { contains: search, mode: 'insensitive' as const } } },
       ];
     }
 
-    const documents = await prisma.documents.findMany({
-      where: whereClause,
-      include: {
-        clients: {
-          select: {
-            first_name: true,
-            last_name: true,
-            company_name: true,
-            address_line1: true,
-            address_line2: true,
-            postal_code: true,
-            city: true,
-            phone: true,
-            tax_id: true,
+    const [documents, total] = await Promise.all([
+      prisma.documents.findMany({
+        where,
+        include: {
+          clients: {
+            select: {
+              first_name: true,
+              last_name: true,
+              company_name: true,
+              address_line1: true,
+              address_line2: true,
+              postal_code: true,
+              city: true,
+              phone: true,
+              tax_id: true,
+            },
+          },
+          vehicles: {
+            select: {
+              plate: true,
+              make: true,
+              model: true,
+              version: true,
+              fuel: true,
+              color: true,
+            },
+          },
+          document_lines: {
+            orderBy: { position: 'asc' },
+          },
+          payments: {
+            orderBy: { payment_date: 'desc' },
           },
         },
-        vehicles: {
-          select: {
-            plate: true,
-            make: true,
-            model: true,
-            version: true,
-            fuel: true,
-            color: true,
-          },
-        },
-        document_lines: {
-          orderBy: { position: 'asc' },
-        },
-        payments: {
-          orderBy: { payment_date: 'desc' },
-        },
-      },
-      orderBy: { created_at: 'desc' },
-    });
+        orderBy: { created_at: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.documents.count({ where }),
+    ]);
 
-    return NextResponse.json(documents);
+    return NextResponse.json({ data: documents, total, page, pageSize });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
@@ -79,17 +87,17 @@ export async function POST(request: Request) {
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const {
-      type, // quote | repair_order | invoice
-      client_id,
-      vehicle_id,
-      notes,
-      lines, // array of items: { item_id, description, line_type, quantity, unit_price, vat_rate, discount_percent }
-    } = body;
 
-    if (!type || !client_id) {
-      return NextResponse.json({ error: 'Type and client_id are required' }, { status: 400 });
+    // Validate input with Zod
+    const validation = documentCreateSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
+
+    const { type, client_id, vehicle_id, notes, lines } = validation.data;
 
     // Call public.next_document_number helper via prisma queryRaw to get formatted sequence number
     const result: any[] = await prisma.$queryRawUnsafe(
@@ -104,11 +112,11 @@ export async function POST(request: Request) {
     let total_vat = 0;
     let total_ttc = 0;
 
-    const formattedLines = (lines || []).map((line: any, index: number) => {
-      const qty = Number(line.quantity || 1);
-      const price = Number(line.unit_price || 0);
-      const disc = Number(line.discount_percent || 0);
-      const vat = Number(line.vat_rate || 19.0);
+    const formattedLines = lines.map((line, index: number) => {
+      const qty = Number(line.quantity);
+      const price = Number(line.unit_price);
+      const disc = Number(line.discount_percent);
+      const vat = Number(line.vat_rate);
 
       const priceAfterDiscount = price * (1 - disc / 100);
       const lineHT = qty * priceAfterDiscount;
@@ -122,8 +130,8 @@ export async function POST(request: Request) {
       return {
         garage_id: ctx.garage.id,
         item_id: line.item_id || null,
-        line_type: line.line_type || 'part',
-        description: line.description || 'Ligne',
+        line_type: line.line_type,
+        description: line.description,
         quantity: qty,
         unit: line.unit || 'pcs',
         unit_price: price,

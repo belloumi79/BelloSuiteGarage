@@ -5,19 +5,47 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-function createPrismaClient() {
+function getClient(): PrismaClient {
+  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    throw new Error('DATABASE_URL is not set. Add it to your Vercel environment variables.');
+    throw new Error('DATABASE_URL is not set.');
   }
+
   const adapter = new PrismaPg({ connectionString: dbUrl });
-  return new PrismaClient({
+  globalForPrisma.prisma = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
+
+  return globalForPrisma.prisma;
 }
 
-export const prisma =
-  globalForPrisma.prisma ?? createPrismaClient();
+const errMsg = 'Prisma is not initialized. Ensure DATABASE_URL is set in your Vercel environment variables.';
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+function lazyError(): never {
+  throw new Error(errMsg);
+}
+
+const errorProxy = new Proxy<Record<string, unknown>>({}, {
+  get() { return lazyError; },
+  apply() { lazyError(); },
+});
+
+export const prisma = new Proxy<PrismaClient>({} as PrismaClient, {
+  get(_, prop) {
+    if (typeof prop === 'symbol' || prop === 'then' || prop === 'constructor') return undefined;
+
+    if (!globalForPrisma.prisma) {
+      try {
+        globalForPrisma.prisma = getClient();
+      } catch {
+        return errorProxy;
+      }
+    }
+
+    const value = (globalForPrisma.prisma as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === 'function' ? value.bind(globalForPrisma.prisma) : value;
+  },
+});

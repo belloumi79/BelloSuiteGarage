@@ -32,7 +32,7 @@ export function createMiddlewareClient(request: NextRequest) {
     return { supabase, supabaseResponse };
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     try {
         const { supabase, supabaseResponse } = createMiddlewareClient(request);
 

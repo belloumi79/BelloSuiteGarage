@@ -41,9 +41,8 @@ export async function getCurrentGarage() {
         if (!membership?.garages) return null;
 
         return { user, garage: membership.garages };
-    } catch {
-        // Missing env vars, DB unreachable, or other infra issues.
-        // Return null so the caller redirects to /login instead of 500-ing.
+    } catch (err) {
+        console.error('[getCurrentGarage] Error:', err);
         return null;
     }
 }

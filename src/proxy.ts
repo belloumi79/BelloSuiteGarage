@@ -33,37 +33,40 @@ export function createMiddlewareClient(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
-    const { supabase, supabaseResponse } = createMiddlewareClient(request);
+    try {
+        const { supabase, supabaseResponse } = createMiddlewareClient(request);
 
-    // Refresh session if expired - required for Server Components
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
-    // Protected API routes — return 401 JSON for unauthenticated callers
-    const protectedApiPaths = ['/api/clients', '/api/vehicles', '/api/documents', '/api/items', '/api/payments', '/api/agenda', '/api/dashboard'];
-    const isProtectedApi = protectedApiPaths.some(path => request.nextUrl.pathname.startsWith(path));
+        // Protected API routes — return 401 JSON for unauthenticated callers
+        const protectedApiPaths = ['/api/clients', '/api/vehicles', '/api/documents', '/api/items', '/api/payments', '/api/agenda', '/api/dashboard'];
+        const isProtectedApi = protectedApiPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
-    // Protected page routes — redirect unauthenticated visitors to /login
-    const isRootApp = request.nextUrl.pathname === '/';
+        const isRootApp = request.nextUrl.pathname === '/';
 
-    // Auth routes that should redirect to dashboard if already logged in
-    const authPaths = ['/login', '/signup', '/reset-password'];
-    const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
+        const authPaths = ['/login', '/signup', '/reset-password'];
+        const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
-    if (isProtectedApi && !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (isProtectedApi && !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        if (isRootApp && !user) {
+            return NextResponse.redirect(new URL('/login', request.url));
+        }
+
+        if (isAuthPath && user) {
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+
+        return supabaseResponse;
+    } catch {
+        // If Supabase is not configured or unreachable, let the request through
+        // so the page/layout can handle it gracefully instead of causing redirect loops.
+        return NextResponse.next();
     }
-
-    if (isRootApp && !user) {
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    if (isAuthPath && user) {
-        return NextResponse.redirect(new URL('/', request.url));
-    }
-
-    return supabaseResponse;
 }
 
 export const config = {

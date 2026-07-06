@@ -36,35 +36,29 @@ export async function proxy(request: NextRequest) {
     try {
         const { supabase, supabaseResponse } = createMiddlewareClient(request);
 
+        // Refresh session if expired — this may call setAll to update cookies.
+        // IMPORTANT: we must NOT use NextResponse.redirect() after this point,
+        // because setAll's cookies would be lost on the redirect response.
         const {
             data: { user },
         } = await supabase.auth.getUser();
 
-        // Protected API routes — return 401 JSON for unauthenticated callers
+        // Protect API routes — return 401 JSON for unauthenticated callers.
+        // This uses a fresh response so cookie loss is irrelevant for 401.
         const protectedApiPaths = ['/api/clients', '/api/vehicles', '/api/documents', '/api/items', '/api/payments', '/api/agenda', '/api/dashboard'];
         const isProtectedApi = protectedApiPaths.some(path => request.nextUrl.pathname.startsWith(path));
-
-        const isRootApp = request.nextUrl.pathname === '/';
-
-        const authPaths = ['/login', '/signup', '/reset-password'];
-        const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
         if (isProtectedApi && !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (isRootApp && !user) {
-            return NextResponse.redirect(new URL('/login', request.url));
-        }
-
-        if (isAuthPath && user) {
-            return NextResponse.redirect(new URL('/', request.url));
-        }
-
+        // Always return supabaseResponse (which carries any cookies setAll refreshed).
+        // Page auth is handled by (app)/layout.tsx via getCurrentGarage().
+        // Avoiding explicit page redirects here prevents the cookie-loss redirect loop.
         return supabaseResponse;
     } catch {
         // If Supabase is not configured or unreachable, let the request through
-        // so the page/layout can handle it gracefully instead of causing redirect loops.
+        // so the page/layout can handle it gracefully instead of 500-ing.
         return NextResponse.next();
     }
 }

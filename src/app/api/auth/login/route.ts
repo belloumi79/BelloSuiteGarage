@@ -18,7 +18,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
 
-        return NextResponse.json({ user: data.user, session: data.session });
+        return NextResponse.json({ user: data.user });
     } catch (err: unknown) {
         return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
     }

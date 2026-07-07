@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
   Plus,
@@ -9,13 +10,22 @@ import {
   ExternalLink,
   RefreshCw,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import type { Client } from '@/lib/types';
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 20;
+  const debouncedSearch = useDebounce(searchQuery, 250);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [clientForm, setClientForm] = useState({
     type: 'individual',
@@ -35,9 +45,15 @@ export default function ClientsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/clients');
-      const data = await res.json();
-      setClients(data.data ?? data);
+      const res = await fetch(`/api/clients?page=${page}&pageSize=${pageSize}`);
+      const result = await res.json();
+      if (Array.isArray(result)) {
+        setClients(result);
+        setTotal(result.length);
+      } else {
+        setClients(result.data ?? []);
+        setTotal(result.total ?? 0);
+      }
     } catch (error) {
       console.error('Failed to load clients:', error);
     } finally {
@@ -47,7 +63,9 @@ export default function ClientsPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]);
+
+  const totalPages = Math.ceil(total / pageSize);
 
   const resetClientForm = () => {
     setClientForm({
@@ -81,9 +99,26 @@ export default function ClientsPage() {
         setIsClientModalOpen(false);
         resetClientForm();
         loadData();
+        addToast(isEdit ? 'Client modifié' : 'Client créé');
       }
     } catch (err) {
       console.error(err);
+      addToast('Erreur lors de la sauvegarde', 'error');
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!confirmDelete) return;
+    try {
+      const res = await fetch(`/api/clients/${confirmDelete.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        addToast('Client supprimé');
+        loadData();
+      }
+    } catch {
+      addToast('Erreur lors de la suppression', 'error');
+    } finally {
+      setConfirmDelete(null);
     }
   };
 
@@ -151,7 +186,7 @@ export default function ClientsPage() {
                 {clients
                   .filter(c => {
                     const name = c.company_name || `${c.first_name} ${c.last_name}`;
-                    return name.toLowerCase().includes(searchQuery.toLowerCase()) || (c.phone && c.phone.includes(searchQuery));
+                    return name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (c.phone && c.phone.includes(debouncedSearch));
                   })
                   .map(client => {
                     const displayName = client.company_name
@@ -177,16 +212,16 @@ export default function ClientsPage() {
                               setEditingClient(client);
                               setClientForm({
                                 type: client.type,
-                                civility: client.civility,
-                                first_name: client.first_name,
-                                last_name: client.last_name,
-                                company_name: client.company_name,
-                                email: client.email,
-                                phone: client.phone,
-                                address_line1: client.address_line1,
-                                city: client.city,
-                                tax_id: client.tax_id,
-                                payment_terms_days: client.payment_terms_days,
+                                civility: client.civility || '',
+                                first_name: client.first_name || '',
+                                last_name: client.last_name || '',
+                                company_name: client.company_name || '',
+                                email: client.email || '',
+                                phone: client.phone || '',
+                                address_line1: client.address_line1 || '',
+                                city: client.city || '',
+                                tax_id: client.tax_id || '',
+                                payment_terms_days: client.payment_terms_days ?? 30,
                                 discount_percent: client.discount_percent
                               });
                               setIsClientModalOpen(true);
@@ -197,12 +232,7 @@ export default function ClientsPage() {
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={async () => {
-                              if (confirm('Supprimer ce client ?')) {
-                                await fetch(`/api/clients/${client.id}`, { method: 'DELETE' });
-                                loadData();
-                              }
-                            }}
+                            onClick={() => setConfirmDelete({ id: client.id, name: displayName })}
                             className="p-2 bg-red-600/10 hover:bg-red-600/20 rounded-lg text-red-400 transition"
                             title="Supprimer"
                           >
@@ -215,6 +245,25 @@ export default function ClientsPage() {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 pt-4">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition"
+              >
+                &larr; Précédent
+              </button>
+              <span className="text-xs text-slate-400">Page {page} / {totalPages}</span>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition"
+              >
+                Suivant &rarr;
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -370,6 +419,14 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Supprimer le client"
+        message={`Êtes-vous sûr de vouloir supprimer ${confirmDelete?.name} ?`}
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteClient}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </>
   );
 }

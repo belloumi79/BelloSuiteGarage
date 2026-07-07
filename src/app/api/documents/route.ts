@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
 import { documentCreateSchema, documentLineSchema } from '@/lib/validations';
+import { apiHeaders } from '@/lib/api-headers';
 
 export async function GET(request: Request) {
   try {
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
       prisma.documents.count({ where }),
     ]);
 
-    return NextResponse.json({ data: documents, total, page, pageSize });
+    return NextResponse.json({ data: documents, total, page, pageSize }, { headers: apiHeaders() });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }

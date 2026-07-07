@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
   Plus,
@@ -12,6 +13,9 @@ import {
   FileSpreadsheet,
   RefreshCw,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import type { Document, Client, Vehicle, Item } from '@/lib/types';
 
 type DocumentLineForm = {
   item_id?: string | null;
@@ -36,19 +40,26 @@ type DocumentForm = {
 };
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 250);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 12;
   const [docFilter, setDocFilter] = useState('all');
 
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [editingDoc, setEditingDoc] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; number: string } | null>(null);
+
+  const { addToast } = useToast();
 
   const [docForm, setDocForm] = useState<DocumentForm>({
     type: 'quote',
@@ -74,7 +85,7 @@ export default function DocumentsPage() {
     try {
       setLoading(true);
       const [docsRes, clientsRes, vehiclesRes, itemsRes, dashRes] = await Promise.all([
-        fetch('/api/documents'),
+        fetch(`/api/documents?page=${page}&pageSize=${pageSize}`),
         fetch('/api/clients'),
         fetch('/api/vehicles'),
         fetch('/api/items'),
@@ -87,7 +98,13 @@ export default function DocumentsPage() {
       const dash = await dashRes.json();
 
       const clientList = cli.data ?? cli;
-      setDocuments(docs.data ?? docs);
+      if (Array.isArray(docs)) {
+        setDocuments(docs);
+        setTotal(docs.length);
+      } else {
+        setDocuments(docs.data ?? []);
+        setTotal(docs.total ?? 0);
+      }
       setClients(clientList);
       setVehicles(veh.data ?? veh);
       setItems(itm.data ?? itm);
@@ -105,7 +122,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     if (docForm.client_id) {
@@ -191,9 +208,11 @@ export default function DocumentsPage() {
         setIsDocModalOpen(false);
         resetDocForm();
         loadData();
+        addToast(isEdit ? 'Document modifié' : 'Document créé');
       }
     } catch (err) {
       console.error(err);
+      addToast('Erreur lors de la sauvegarde', 'error');
     }
   };
 
@@ -207,24 +226,26 @@ export default function DocumentsPage() {
       if (res.ok) {
         setSelectedDoc(null);
         loadData();
+        addToast(`Document converti en ${nextType === 'repair_order' ? 'ordre de réparation' : 'facture'}`);
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleDocDelete = async (docId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) return;
+  const handleConfirmDeleteDoc = async () => {
+    if (!confirmDelete) return;
     try {
-      const res = await fetch(`/api/documents/${docId}`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(`/api/documents/${confirmDelete.id}`, { method: 'DELETE' });
       if (res.ok) {
+        addToast('Document supprimé');
         setSelectedDoc(null);
         loadData();
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      addToast('Erreur lors de la suppression', 'error');
+    } finally {
+      setConfirmDelete(null);
     }
   };
 
@@ -247,9 +268,11 @@ export default function DocumentsPage() {
         });
         setSelectedDoc(null);
         loadData();
+        addToast('Paiement enregistré');
       }
     } catch (err) {
       console.error(err);
+      addToast('Erreur lors du paiement', 'error');
     }
   };
 
@@ -259,7 +282,7 @@ export default function DocumentsPage() {
     csvContent += 'N° Facture,Date,Client,Total TTC,Montant Payé,Statut\n';
 
     paidDocs.forEach(d => {
-      const clientName = d.clients.company_name || `${d.clients.first_name} ${d.clients.last_name}`;
+      const clientName = d.clients?.company_name || `${d.clients?.first_name || ''} ${d.clients?.last_name || ''}`.trim();
       csvContent += `${d.number},${d.issue_date.split('T')[0]},"${clientName}",${Number(d.total_ttc).toFixed(2)},${Number(d.amount_paid).toFixed(2)},${d.status}\n`;
     });
 
@@ -281,6 +304,8 @@ export default function DocumentsPage() {
     },
     { ht: 0, vat: 0, ttc: 0 }
   );
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <>
@@ -470,15 +495,15 @@ export default function DocumentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {documents
               .filter(d => {
-                const searchLower = searchQuery.toLowerCase();
+                const searchLower = debouncedSearch.toLowerCase();
                 const clientName = d.clients ? (d.clients.company_name || `${d.clients.first_name} ${d.clients.last_name}`).toLowerCase() : '';
-                const plate = d.vehicles ? d.vehicles.plate.toLowerCase() : '';
+                const plate = d.vehicles ? (d.vehicles.plate || '').toLowerCase() : '';
                 const matchesSearch = d.number.toLowerCase().includes(searchLower) || clientName.includes(searchLower) || plate.includes(searchLower);
                 const matchesType = docFilter === 'all' || d.type === docFilter;
                 return matchesSearch && matchesType;
               })
               .map(doc => {
-                const clientName = doc.clients.company_name || `${doc.clients.first_name} ${doc.clients.last_name}`;
+                const clientName = doc.clients?.company_name || `${doc.clients?.first_name || ''} ${doc.clients?.last_name || ''}`.trim();
                 const typeLabel = doc.type === 'quote' ? 'Devis' : doc.type === 'repair_order' ? 'Ordre de Rép. (O.R.)' : 'Facture';
 
                 return (
@@ -574,10 +599,10 @@ export default function DocumentsPage() {
                               client_id: doc.client_id,
                               vehicle_id: doc.vehicle_id || '',
                               notes: doc.notes || '',
-                              lines: doc.document_lines.map((l: any) => ({
-                                item_id: l.item_id || null,
-                                description: l.description,
-                                line_type: l.line_type,
+                              lines: (doc.document_lines || []).map((l: any) => ({
+                                item_id: l.item_id || '',
+                                description: l.description || '',
+                                line_type: l.line_type || '',
                                 quantity: Number(l.quantity),
                                 unit: l.unit || 'pcs',
                                 unit_price: Number(l.unit_price),
@@ -596,7 +621,7 @@ export default function DocumentsPage() {
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDocDelete(doc.id)}
+                          onClick={() => setConfirmDelete({ id: doc.id, number: doc.number })}
                           className="p-2 bg-slate-800 hover:bg-red-950/40 hover:text-red-400 rounded-lg text-slate-400 transition"
                           title="Supprimer"
                         >
@@ -608,6 +633,14 @@ export default function DocumentsPage() {
                 );
               })}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 pt-4">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition">&larr; Précédent</button>
+              <span className="text-xs text-slate-400">Page {page} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition">Suivant &rarr;</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -850,6 +883,15 @@ export default function DocumentsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Supprimer le document"
+        message={`Êtes-vous sûr de vouloir supprimer le document ${confirmDelete?.number} ?`}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirmDeleteDoc}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </>
   );
 }

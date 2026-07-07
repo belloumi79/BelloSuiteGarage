@@ -4,6 +4,7 @@ import { getCurrentGarage } from '@/lib/context';
 import { getErrorMessage } from '@/lib/errors';
 import { stock_movement_type } from '@prisma/client';
 import { stockMovementCreateSchema } from '@/lib/validations';
+import { apiHeaders } from '@/lib/api-headers';
 
 /**
  * GET /api/stock-movements?item_id=…&type=…&from=…&to=…
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
       take: 200,
     });
 
-    return NextResponse.json(movements);
+    return NextResponse.json(movements, { headers: apiHeaders() });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
 
       // Adjust the item's stock_qty
       const adjustment =
-        movement_type === 'sale_out' || movement_type === 'internal_use'
+        movement_type === 'sale_out' || movement_type === 'internal_use' || movement_type === 'return_out'
           ? -qty
           : qty; // purchase_in, return_in, return_out, adjustment
 

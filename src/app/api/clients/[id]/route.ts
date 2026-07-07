@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { clientUpdateSchema } from '@/lib/validations';
+import { apiHeaders } from '@/lib/api-headers';
 
 export async function GET(
   request: Request,
@@ -27,7 +28,7 @@ export async function GET(
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    return NextResponse.json(client);
+    return NextResponse.json(client, { headers: apiHeaders() });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }

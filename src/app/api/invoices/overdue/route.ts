@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { getErrorMessage } from '@/lib/errors';
+import { apiHeaders } from '@/lib/api-headers';
 
 /**
  * GET /api/invoices/overdue
@@ -73,7 +74,7 @@ export async function GET() {
 
     const totalOverdue = enriched.reduce((sum, i) => sum + i.remaining, 0);
 
-    return NextResponse.json({ invoices: enriched, totalOverdue });
+    return NextResponse.json({ invoices: enriched, totalOverdue }, { headers: apiHeaders() });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
   Plus,
@@ -8,14 +9,22 @@ import {
   Pencil,
   RefreshCw,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import type { Vehicle, Client } from '@/lib/types';
 
 export default function VehiclesPage() {
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 250);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 12;
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; plate: string } | null>(null);
 
   const [vehicleForm, setVehicleForm] = useState({
     client_id: '',
@@ -30,17 +39,25 @@ export default function VehiclesPage() {
     notes: ''
   });
 
+  const { addToast } = useToast();
+
   const loadData = async () => {
     try {
       setLoading(true);
       const [vehRes, cliRes] = await Promise.all([
-        fetch('/api/vehicles'),
+        fetch(`/api/vehicles?page=${page}&pageSize=${pageSize}`),
         fetch('/api/clients')
       ]);
       const veh = await vehRes.json();
       const cli = await cliRes.json();
       const clientList = cli.data ?? cli;
-      setVehicles(veh.data ?? veh);
+      if (Array.isArray(veh)) {
+        setVehicles(veh);
+        setTotal(veh.length);
+      } else {
+        setVehicles(veh.data ?? []);
+        setTotal(veh.total ?? 0);
+      }
       setClients(clientList);
       if (clientList.length > 0) {
         setVehicleForm(prev => ({ ...prev, client_id: clientList[0].id }));
@@ -54,7 +71,7 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]);
 
   const resetVehicleForm = () => {
     setVehicleForm({
@@ -86,11 +103,33 @@ export default function VehiclesPage() {
         setIsVehicleModalOpen(false);
         resetVehicleForm();
         loadData();
+        addToast(isEdit ? 'Véhicule modifié' : 'Véhicule créé');
       }
     } catch (err) {
       console.error(err);
+      addToast('Erreur lors de la sauvegarde', 'error');
     }
   };
+
+  const handleDeleteVehicle = async () => {
+    if (!confirmDelete) return;
+    try {
+      const res = await fetch(`/api/vehicles/${confirmDelete.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        addToast('Véhicule supprimé');
+        loadData();
+      } else {
+        const err = await res.json();
+        addToast(err.error || 'Erreur', 'error');
+      }
+    } catch {
+      addToast('Erreur lors de la suppression', 'error');
+    } finally {
+      setConfirmDelete(null);
+    }
+  };
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <>
@@ -143,11 +182,11 @@ export default function VehiclesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {vehicles
               .filter(v => {
-                const searchLower = searchQuery.toLowerCase();
+                const searchLower = debouncedSearch.toLowerCase();
                 return (
-                  v.plate.toLowerCase().includes(searchLower) ||
-                  v.make.toLowerCase().includes(searchLower) ||
-                  v.model.toLowerCase().includes(searchLower)
+                  (v.plate || '').toLowerCase().includes(searchLower) ||
+                  (v.make || '').toLowerCase().includes(searchLower) ||
+                  (v.model || '').toLowerCase().includes(searchLower)
                 );
               })
               .map(vehicle => {
@@ -188,14 +227,14 @@ export default function VehiclesPage() {
                           setEditingVehicle(vehicle);
                           setVehicleForm({
                             client_id: vehicle.client_id,
-                            plate: vehicle.plate,
-                            make: vehicle.make,
-                            model: vehicle.model,
+                            plate: vehicle.plate || '',
+                            make: vehicle.make || '',
+                            model: vehicle.model || '',
                             version: vehicle.version || '',
-                            fuel: vehicle.fuel,
+                            fuel: vehicle.fuel || 'Essence',
                             color: vehicle.color || '',
-                            year: vehicle.year,
-                            mileage: vehicle.mileage,
+                            year: vehicle.year ?? new Date().getFullYear(),
+                            mileage: vehicle.mileage ?? 0,
                             notes: vehicle.notes || ''
                           });
                           setIsVehicleModalOpen(true);
@@ -206,16 +245,7 @@ export default function VehiclesPage() {
                         Modifier
                       </button>
                       <button
-                        onClick={async () => {
-                          if (confirm('Supprimer ce véhicule ?')) {
-                            const res = await fetch(`/api/vehicles/${vehicle.id}`, { method: 'DELETE' });
-                            if (res.ok) loadData();
-                            else {
-                              const err = await res.json();
-                              alert(err.error);
-                            }
-                          }
-                        }}
+                        onClick={() => setConfirmDelete({ id: vehicle.id, plate: vehicle.plate || '' })}
                         className="p-1.5 bg-red-600/10 hover:bg-red-600/20 rounded-lg text-red-400 transition text-xs flex items-center gap-1.5"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -225,9 +255,17 @@ export default function VehiclesPage() {
                   </div>
                 );
               })}
+            </div>
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 pt-4">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition">&larr; Précédent</button>
+              <span className="text-xs text-slate-400">Page {page} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition">Suivant &rarr;</button>
+            </div>
+          )}
         </div>
-      </div>
 
       {isVehicleModalOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50">
@@ -342,6 +380,15 @@ export default function VehiclesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Supprimer le véhicule"
+        message={`Êtes-vous sûr de vouloir supprimer le véhicule ${confirmDelete?.plate} ?`}
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteVehicle}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </>
   );
 }

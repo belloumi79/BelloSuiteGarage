@@ -2,6 +2,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
+import { apiHeaders } from '@/lib/api-headers';
 
 export async function GET() {
   try {
@@ -140,10 +141,10 @@ export async function GET() {
       recentSales: recentSales.map(s => ({
         id: s.id,
         amount: Number(s.amount),
-        date: s.payment_date.toISOString().split('T')[0],
+          date: s.payment_date.toISOString().split('T')[0],
         method: s.method,
       })),
-    });
+    }, { headers: apiHeaders() });
   } catch (err: unknown) {
     console.error('Dashboard error:', err);
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });

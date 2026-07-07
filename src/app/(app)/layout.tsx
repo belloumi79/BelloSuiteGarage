@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Wrench } from 'lucide-react';
 import Sidebar from './Sidebar';
+import ClientLayout from './ClientLayout';
 
 export default async function AppLayout({
   children,
@@ -18,7 +19,7 @@ export default async function AppLayout({
       <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
         <Sidebar />
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-950 relative">
-          {children}
+          <ClientLayout>{children}</ClientLayout>
         </main>
       </div>
     );

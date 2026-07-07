@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
   Plus,
@@ -8,14 +9,23 @@ import {
   Pencil,
   RefreshCw,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import type { Item } from '@/lib/types';
 
 export default function ItemsPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 250);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 20;
   const [itemFilter, setItemFilter] = useState('all');
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const { addToast } = useToast();
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [itemForm, setItemForm] = useState({
     type: 'part',
@@ -34,9 +44,15 @@ export default function ItemsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/items');
+      const res = await fetch(`/api/items?page=${page}&pageSize=${pageSize}`);
       const data = await res.json();
-      setItems(data.data ?? data);
+      if (Array.isArray(data)) {
+        setItems(data);
+        setTotal(data.length);
+      } else {
+        setItems(data.data ?? []);
+        setTotal(data.total ?? 0);
+      }
     } catch (error) {
       console.error('Failed to load items:', error);
     } finally {
@@ -46,7 +62,7 @@ export default function ItemsPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]);
 
   const resetItemForm = () => {
     setItemForm({
@@ -65,6 +81,21 @@ export default function ItemsPage() {
     setEditingItem(null);
   };
 
+  const handleDeleteItem = async () => {
+    if (!confirmDelete) return;
+    try {
+      const res = await fetch(`/api/items/${confirmDelete.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        addToast('Article supprimé');
+        loadData();
+      }
+    } catch {
+      addToast('Erreur lors de la suppression', 'error');
+    } finally {
+      setConfirmDelete(null);
+    }
+  };
+
   const handleItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -79,11 +110,15 @@ export default function ItemsPage() {
         setIsItemModalOpen(false);
         resetItemForm();
         loadData();
+        addToast(isEdit ? 'Article modifié' : 'Article créé');
       }
     } catch (err) {
       console.error(err);
+      addToast("Erreur lors de la sauvegarde", 'error');
     }
   };
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <>
@@ -161,9 +196,9 @@ export default function ItemsPage() {
               <tbody>
                 {items
                   .filter(i => {
-                    const matchesSearch = i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      (i.reference && i.reference.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                      (i.barcode && i.barcode.includes(searchQuery));
+                    const matchesSearch = i.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                      (i.reference && i.reference.toLowerCase().includes(debouncedSearch.toLowerCase())) ||
+                      (i.barcode && i.barcode.includes(debouncedSearch));
                     const matchesType = itemFilter === 'all' || i.type === itemFilter;
                     return matchesSearch && matchesType;
                   })
@@ -222,12 +257,7 @@ export default function ItemsPage() {
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={async () => {
-                              if (confirm('Supprimer cet article ?')) {
-                                await fetch(`/api/items/${item.id}`, { method: 'DELETE' });
-                                loadData();
-                              }
-                            }}
+                            onClick={() => setConfirmDelete({ id: item.id, name: item.name })}
                             className="p-2 bg-red-600/10 hover:bg-red-600/20 rounded-lg text-red-400 transition"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -239,6 +269,14 @@ export default function ItemsPage() {
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 pt-4">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition">&larr; Précédent</button>
+              <span className="text-xs text-slate-400">Page {page} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition">Suivant &rarr;</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -360,6 +398,14 @@ export default function ItemsPage() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Supprimer l'article"
+        message={`Êtes-vous sûr de vouloir supprimer ${confirmDelete?.name} ?`}
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteItem}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </>
   );
 }

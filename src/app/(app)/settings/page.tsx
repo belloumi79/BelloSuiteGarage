@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  RefreshCw,
-} from 'lucide-react';
+import { RefreshCw, Save } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import type { Garage } from '@/lib/types';
 
 export default function SettingsPage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
+  const { addToast } = useToast();
 
   const loadData = async () => {
     try {
@@ -15,8 +18,19 @@ export default function SettingsPage() {
       const res = await fetch('/api/dashboard');
       const data = await res.json();
       setDashboardData(data);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
+      setForm({
+        name: data.garage.name || '',
+        legal_name: data.garage.legal_name || '',
+        tax_id: data.garage.tax_id || '',
+        phone: data.garage.phone || '',
+        email: data.garage.email || '',
+        address_line1: data.garage.address_line1 || '',
+        city: data.garage.city || '',
+        invoice_footer: data.garage.invoice_footer || '',
+        vat_default: String(data.garage.vat_default || 19),
+      });
+    } catch {
+      addToast('Erreur lors du chargement', 'error');
     } finally {
       setLoading(false);
     }
@@ -25,6 +39,38 @@ export default function SettingsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const res = await fetch('/api/garage', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          legal_name: form.legal_name || undefined,
+          tax_id: form.tax_id || undefined,
+          phone: form.phone || undefined,
+          email: form.email || undefined,
+          address_line1: form.address_line1 || undefined,
+          city: form.city || undefined,
+          invoice_footer: form.invoice_footer || undefined,
+          vat_default: form.vat_default ? Number(form.vat_default) : undefined,
+        }),
+      });
+      if (res.ok) {
+        addToast('Paramètres enregistrés');
+        loadData();
+      } else {
+        const err = await res.json();
+        addToast(err.error || 'Erreur lors de la sauvegarde', 'error');
+      }
+    } catch {
+      addToast('Erreur réseau', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -66,45 +112,96 @@ export default function SettingsPage() {
                   <label className="text-xs text-slate-400 block mb-1">Nom du Garage</label>
                   <input
                     type="text"
-                    value={dashboardData.garage.name}
-                    disabled
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-400"
+                    value={form.name}
+                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Raison sociale</label>
+                  <input
+                    type="text"
+                    value={form.legal_name}
+                    onChange={e => setForm(p => ({ ...p, legal_name: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Matricule Fiscal</label>
                   <input
                     type="text"
-                    value={dashboardData.garage.tax_id || ''}
-                    disabled
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-400"
+                    value={form.tax_id}
+                    onChange={e => setForm(p => ({ ...p, tax_id: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Téléphone</label>
                   <input
                     type="text"
-                    value={dashboardData.garage.phone || ''}
-                    disabled
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-400"
+                    value={form.phone}
+                    onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">E-mail de contact</label>
                   <input
                     type="text"
-                    value={dashboardData.garage.email || ''}
-                    disabled
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-400"
+                    value={form.email}
+                    onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Adresse</label>
+                  <input
+                    type="text"
+                    value={form.address_line1}
+                    onChange={e => setForm(p => ({ ...p, address_line1: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Ville</label>
+                  <input
+                    type="text"
+                    value={form.city}
+                    onChange={e => setForm(p => ({ ...p, city: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">TVA par défaut (%)</label>
+                  <input
+                    type="number"
+                    value={form.vat_default}
+                    onChange={e => setForm(p => ({ ...p, vat_default: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
 
-              <div className="bg-blue-600/10 border border-blue-500/20 p-4 rounded-xl">
-                <h4 className="text-xs font-bold text-blue-400 mb-1">Note de Production</h4>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Ce garage a été automatiquement créé et initialisé dans votre base de données Supabase. Pour modifier directement les coordonnées du garage, vous pouvez éditer la table <code className="text-blue-300 font-mono">public.garages</code> dans l'éditeur SQL Supabase.
-                </p>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Pied de facture</label>
+                <textarea
+                  rows={2}
+                  value={form.invoice_footer}
+                  onChange={e => setForm(p => ({ ...p, invoice_footer: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                  placeholder="Merci pour votre confiance."
+                />
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-slate-800">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-slate-100 font-medium px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 transition"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
               </div>
             </div>
           </div>

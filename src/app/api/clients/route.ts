@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { clientCreateSchema, clientUpdateSchema } from '@/lib/validations';
+import { apiHeaders } from '@/lib/api-headers';
 
 export async function GET(request: Request) {
   try {
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       prisma.clients.count({ where }),
     ]);
 
-    return NextResponse.json({ data: clients, total, page, pageSize });
+    return NextResponse.json({ data: clients, total, page, pageSize }, { headers: apiHeaders() });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }

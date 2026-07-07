@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { vehicleCreateSchema, vehicleUpdateSchema } from '@/lib/validations';
+import { apiHeaders } from '@/lib/api-headers';
 
 export async function GET(request: Request) {
   try {
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
       prisma.vehicles.count({ where }),
     ]);
 
-    return NextResponse.json({ data: vehicles, total, page, pageSize });
+    return NextResponse.json({ data: vehicles, total, page, pageSize }, { headers: apiHeaders() });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }

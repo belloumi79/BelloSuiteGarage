@@ -523,7 +523,7 @@ model agenda_events {
   color                                  String?
   created_by                             String?    @db.Uuid
   created_at                             DateTime   @default(now()) @db.Timestamptz(6)
-  updated_at                             DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime   @default(now()) @updatedAt @db.Timestamptz(6)
   users_agenda_events_assigned_toTousers users?     @relation("agenda_events_assigned_toTousers", fields: [assigned_to], references: [id], onUpdate: NoAction)
   clients                                clients?   @relation(fields: [client_id], references: [id], onUpdate: NoAction)
   users_agenda_events_created_byTousers  users?     @relation("agenda_events_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
@@ -575,7 +575,7 @@ model clients {
   discount_percent   Decimal?        @default(0) @db.Decimal(5, 2)
   active             Boolean         @default(true)
   created_at         DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
   agenda_events      agenda_events[]
   garages            garages         @relation(fields: [garage_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   documents          documents[]
@@ -639,7 +639,7 @@ model documents {
   created_by                         String?            @db.Uuid
   assigned_to                        String?            @db.Uuid
   created_at                         DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at                         DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at                         DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
   agenda_events                      agenda_events[]
   document_lines                     document_lines[]
   users_documents_assigned_toTousers users?             @relation("documents_assigned_toTousers", fields: [assigned_to], references: [id], onUpdate: NoAction)
@@ -703,7 +703,7 @@ model garages {
   next_order_number   Int?               @default(1)
   invoice_footer      String?
   created_at          DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
   agenda_events       agenda_events[]
   audit_log           audit_log[]
   clients             clients[]
@@ -757,7 +757,7 @@ model items {
   stock_location  String?
   active          Boolean           @default(true)
   created_at      DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
   document_lines  document_lines[]
   item_categories item_categories?  @relation(fields: [category_id], references: [id], onUpdate: NoAction)
   garages         garages           @relation(fields: [garage_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -802,7 +802,7 @@ model profiles {
   phone      String?
   language   String?  @default("fr")
   created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   users      users    @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
@@ -850,7 +850,7 @@ model suppliers {
   notes              String?
   active             Boolean  @default(true)
   created_at         DateTime @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   items              items[]
   garages            garages  @relation(fields: [garage_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -901,7 +901,7 @@ model vehicles {
   registration_date DateTime?       @db.Date
   notes             String?
   created_at        DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
   agenda_events     agenda_events[]
   documents         documents[]
   clients           clients         @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)

@@ -57,6 +57,10 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
+    if (body.vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(body.vin)) {
+      return NextResponse.json({ error: 'Format VIN invalide (17 caractères, sans I/O/Q)' }, { status: 400 });
+    }
+
     // Validate input with Zod
     const validation = vehicleCreateSchema.safeParse(body);
     if (!validation.success) {

@@ -15,6 +15,10 @@ export async function PUT(
 
     const body = await request.json();
 
+    if (body.vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(body.vin)) {
+      return NextResponse.json({ error: 'Format VIN invalide (17 caractères, sans I/O/Q)' }, { status: 400 });
+    }
+
     const validation = vehicleUpdateSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(

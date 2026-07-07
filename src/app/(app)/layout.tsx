@@ -14,6 +14,16 @@ export default async function AppLayout({
 }) {
   const ctx = await getCurrentGarage();
 
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.expires_at) {
+    const expiresAt = new Date(session.expires_at * 1000);
+    if (expiresAt < new Date(Date.now() + 30 * 60 * 1000)) {
+      await supabase.auth.refreshSession();
+    }
+  }
+
   if (ctx) {
     return (
       <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
@@ -25,8 +35,6 @@ export default async function AppLayout({
     );
   }
 
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {

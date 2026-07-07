@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       take: 200,
     });
 
-    return NextResponse.json(movements, { headers: apiHeaders() });
+    return NextResponse.json({ data: movements }, { headers: apiHeaders() });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
   }

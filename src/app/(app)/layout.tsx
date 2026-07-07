@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Wrench } from 'lucide-react';
+import Sidebar from './Sidebar';
 
 export default async function AppLayout({
   children,
@@ -13,10 +14,16 @@ export default async function AppLayout({
   const ctx = await getCurrentGarage();
 
   if (ctx) {
-    return <>{children}</>;
+    return (
+      <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-950 relative">
+          {children}
+        </main>
+      </div>
+    );
   }
 
-  // Check if the user IS authenticated but getCurrentGarage returned null (DB issue or no garage).
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();

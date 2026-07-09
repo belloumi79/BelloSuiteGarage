@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
@@ -23,7 +23,7 @@ export default function ItemsPage() {
   const pageSize = 20;
   const [itemFilter, setItemFilter] = useState('all');
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
   const { addToast } = useToast();
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
@@ -41,8 +41,9 @@ export default function ItemsPage() {
     stock_location: ''
   });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       const res = await fetch(`/api/items?page=${page}&pageSize=${pageSize}`);
       const data = await res.json();
@@ -58,11 +59,13 @@ export default function ItemsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize]);
 
+  // Standard data-fetching pattern: loadData wraps an async API call with state updates.
+   
   useEffect(() => {
     loadData();
-  }, [page]);
+  }, [loadData]);
 
   const resetItemForm = () => {
     setItemForm({
@@ -167,16 +170,9 @@ export default function ItemsPage() {
               >
                 <option value="all">Tous les types</option>
                 <option value="part">Pièces de rechange</option>
-                <option value="labor">Main d'œuvre</option>
-              </select>
-              <button
-                onClick={() => setIsItemModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-slate-100 font-medium px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition"
-              >
-                <Plus className="w-4 h-4" />
-                Nouvel Article
-              </button>
-            </div>
+                    <option value="labor">Main d&apos;œuvre</option>
+                  </select>
+                </div>
           </div>
 
           <div className="bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden">
@@ -284,20 +280,20 @@ export default function ItemsPage() {
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
             <div className="p-5 border-b border-slate-800 flex justify-between items-center">
-              <h3 className="text-base font-bold text-slate-200">{editingItem ? "Modifier l'article" : 'Ajouter un article / prestation'}</h3>
+              <h3 className="text-base font-bold text-slate-200">{editingItem ? 'Modifier l&apos;article' : 'Ajouter un article / prestation'}</h3>
               <button onClick={() => { setIsItemModalOpen(false); resetItemForm(); }} className="text-slate-400 hover:text-slate-200">&times;</button>
             </div>
             <form onSubmit={handleItemSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Type d'article</label>
+                  <label className="text-xs text-slate-400 block mb-1">Type d&apos;article</label>
                   <select
                     value={itemForm.type}
                     onChange={(e) => setItemForm(prev => ({ ...prev, type: e.target.value }))}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
                   >
                     <option value="part">Pièce de rechange</option>
-                    <option value="labor">Main d'œuvre</option>
+                <option value="labor">Main d&apos;œuvre</option>
                   </select>
                 </div>
                 <div>
@@ -313,7 +309,7 @@ export default function ItemsPage() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Nom de l'article / libellé</label>
+                  <label className="text-xs text-slate-400 block mb-1">Nom de l&apos;article / libellé</label>
                 <input
                   type="text"
                   required
@@ -400,7 +396,7 @@ export default function ItemsPage() {
       )}
       <ConfirmModal
         open={!!confirmDelete}
-        title="Supprimer l'article"
+        title="Supprimer l&apos;article"
         message={`Êtes-vous sûr de vouloir supprimer ${confirmDelete?.name} ?`}
         confirmLabel="Supprimer"
         onConfirm={handleDeleteItem}

@@ -1,15 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Trash2,
   RefreshCw,
 } from 'lucide-react';
+import type { Client, Vehicle } from '@/lib/types';
+
+interface AgendaEvent {
+  id: string;
+  title: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  description?: string | null;
+  clients?: { company_name?: string | null; first_name?: string | null; last_name?: string | null } | null;
+  vehicles?: { make?: string | null; model?: string | null; plate?: string | null } | null;
+}
 
 export default function PlanningPage() {
-  const [agenda, setAgenda] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [agenda, setAgenda] = useState<AgendaEvent[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
 
@@ -24,10 +36,11 @@ export default function PlanningPage() {
     description: ''
   });
 
-  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       const [agdRes, cliRes, vehRes] = await Promise.all([
         fetch('/api/agenda'),
@@ -45,11 +58,13 @@ export default function PlanningPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // Standard data-fetching pattern: loadData wraps an async API call with state updates.
+   
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleAgendaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +136,7 @@ export default function PlanningPage() {
       <div className="p-6 space-y-6 no-print">
         <div className="space-y-6">
           <div className="flex justify-between items-center gap-4">
-            <h3 className="text-base font-bold text-slate-200">Agenda de l'atelier</h3>
+            <h3 className="text-base font-bold text-slate-200">{"Agenda de l'atelier"}</h3>
             <button
               onClick={() => setIsAgendaModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700 text-slate-100 font-medium px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition"
@@ -134,7 +149,7 @@ export default function PlanningPage() {
           <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-6">
             <div className="space-y-4">
               {agenda.length === 0 ? (
-                <p className="text-center text-slate-500 py-12 text-sm">Aucun rendez-vous planifié dans l'agenda</p>
+                <p className="text-center text-slate-500 py-12 text-sm">{"Aucun rendez-vous planifié dans l'agenda"}</p>
               ) : (
                 agenda.map(event => {
                   const clientName = event.clients
@@ -194,7 +209,7 @@ export default function PlanningPage() {
             </div>
             <form onSubmit={handleAgendaSubmit} className="p-6 space-y-4">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Titre de l'intervention</label>
+                <label className="text-xs text-slate-400 block mb-1">{"Titre de l'intervention"}</label>
                 <input
                   type="text"
                   required
@@ -207,7 +222,7 @@ export default function PlanningPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Début de l'intervention</label>
+                  <label className="text-xs text-slate-400 block mb-1">{"Début de l'intervention"}</label>
                   <input
                     type="datetime-local"
                     required
@@ -217,7 +232,7 @@ export default function PlanningPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Fin de l'intervention</label>
+                  <label className="text-xs text-slate-400 block mb-1">{"Fin de l'intervention"}</label>
                   <input
                     type="datetime-local"
                     required

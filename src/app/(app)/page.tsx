@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Wrench,
   DollarSign,
@@ -19,12 +19,39 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+interface Appointment {
+  id: string;
+  title: string;
+  starts_at: string;
+  clients?: { company_name?: string | null; first_name?: string | null; last_name?: string | null };
+  vehicles?: { plate?: string | null };
+}
+
+interface StockItem {
+  id: string;
+  name: string;
+  reference: string | null;
+  stock_qty: number;
+  stock_min: number;
+}
+
+interface DashboardData {
+  garage?: { name?: string; city?: string };
+  monthlyRevenue?: number;
+  totalUnpaid?: number;
+  activeORCount?: number;
+  lowStock?: StockItem[];
+  recentSales?: { date: string; amount: number }[];
+  todayAppointments?: Appointment[];
+}
+
 export default function DashboardPage() {
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       const dashRes = await fetch('/api/dashboard');
       const dash = await dashRes.json();
@@ -34,11 +61,13 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // Standard data-fetching pattern: loadData wraps an async API call with state updates.
+   
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   return (
     <>
@@ -171,26 +200,30 @@ export default function DashboardPage() {
                     <Calendar className="w-4 h-4 text-blue-400" />
                     Rendez-vous du jour
                   </h4>
-                  {dashboardData.todayAppointments?.length > 0 ? (
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                      {dashboardData.todayAppointments.map((apt: any) => {
-                        const clientName = apt.clients?.company_name || `${apt.clients?.first_name} ${apt.clients?.last_name}`;
-                        return (
-                          <div key={apt.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between hover:border-slate-700 transition">
-                            <div>
-                              <h5 className="text-xs font-semibold text-slate-200">{apt.title}</h5>
-                              <p className="text-[10px] text-slate-500">{clientName} | {apt.vehicles?.plate}</p>
+                  {(() => {
+                    const appts = dashboardData.todayAppointments ?? [];
+                    if (appts.length === 0) {
+                      return <p className="text-xs text-slate-500 text-center py-6">Aucun rendez-vous planifié aujourd&apos;hui</p>;
+                    }
+                    return (
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        {appts.map((apt: Appointment) => {
+                          const clientName = apt.clients?.company_name || `${apt.clients?.first_name} ${apt.clients?.last_name}`;
+                          return (
+                            <div key={apt.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between hover:border-slate-700 transition">
+                              <div>
+                                <h5 className="text-xs font-semibold text-slate-200">{apt.title}</h5>
+                                <p className="text-[10px] text-slate-500">{clientName} | {apt.vehicles?.plate}</p>
+                              </div>
+                              <span className="text-[10px] bg-blue-600/10 text-blue-400 px-2 py-1 rounded border border-blue-500/20 font-mono">
+                                {new Date(apt.starts_at).toLocaleTimeString('fr-TN', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
                             </div>
-                            <span className="text-[10px] bg-blue-600/10 text-blue-400 px-2 py-1 rounded border border-blue-500/20 font-mono">
-                              {new Date(apt.starts_at).toLocaleTimeString('fr-TN', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-500 text-center py-6">Aucun rendez-vous planifié aujourd'hui</p>
-                  )}
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-5">
@@ -198,24 +231,28 @@ export default function DashboardPage() {
                     <Package className="w-4 h-4 text-rose-400" />
                     Alertes Réapprovisionnement
                   </h4>
-                  {dashboardData.lowStock?.length > 0 ? (
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                      {dashboardData.lowStock.map((itm: any) => (
-                        <div key={itm.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between">
-                          <div>
-                            <h5 className="text-xs font-semibold text-slate-200">{itm.name}</h5>
-                            <p className="text-[10px] text-slate-500">Réf : {itm.reference}</p>
+                  {(() => {
+                    const items = dashboardData.lowStock ?? [];
+                    if (items.length === 0) {
+                      return <p className="text-xs text-slate-500 text-center py-6">Tout le stock est optimal</p>;
+                    }
+                    return (
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        {items.map((itm: StockItem) => (
+                          <div key={itm.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between">
+                            <div>
+                              <h5 className="text-xs font-semibold text-slate-200">{itm.name}</h5>
+                              <p className="text-[10px] text-slate-500">Réf : {itm.reference}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-bold text-rose-400">{Number(itm.stock_qty).toFixed(0)}</span>
+                              <span className="text-[10px] text-slate-500 font-medium block">Min {Number(itm.stock_min).toFixed(0)}</span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-xs font-bold text-rose-400">{Number(itm.stock_qty).toFixed(0)}</span>
-                            <span className="text-[10px] text-slate-500 font-medium block">Min {Number(itm.stock_min).toFixed(0)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-500 text-center py-6">Tout le stock est optimal</p>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

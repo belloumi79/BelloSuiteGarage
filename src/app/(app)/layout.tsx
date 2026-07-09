@@ -19,7 +19,8 @@ export default async function AppLayout({
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.expires_at) {
     const expiresAt = new Date(session.expires_at * 1000);
-    if (expiresAt < new Date(Date.now() + 30 * 60 * 1000)) {
+    const now = new Date();
+    if (expiresAt.getTime() < now.getTime() + 30 * 60 * 1000) {
       await supabase.auth.refreshSession();
     }
   }

@@ -1,7 +1,5 @@
 'use client';
 
-import { Wrench } from 'lucide-react';
-
 export default function Loading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center">

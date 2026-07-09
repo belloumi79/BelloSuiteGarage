@@ -11,6 +11,7 @@ import {
   FileText,
   Calendar,
   Settings,
+  LogOut,
 } from 'lucide-react';
 
 const navItems = [
@@ -28,6 +29,19 @@ export default function Sidebar() {
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
     return pathname.startsWith(path);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (res.ok) {
+        window.location.href = '/login';
+      } else {
+        console.error('Logout failed');
+      }
+    } catch (err) {
+      console.error('Error during logout:', err);
+    }
   };
 
   return (
@@ -64,7 +78,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-slate-800/60">
+      <div className="p-4 border-t border-slate-800/60 space-y-1">
         <Link
           href="/settings"
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
@@ -76,7 +90,15 @@ export default function Sidebar() {
           <Settings className="w-4 h-4" />
           Paramètres Garage
         </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-950/20 hover:text-red-400 border border-transparent transition-all cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          Se déconnecter
+        </button>
       </div>
     </aside>
   );
 }
+

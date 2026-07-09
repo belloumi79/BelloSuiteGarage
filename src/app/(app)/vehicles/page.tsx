@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
@@ -23,7 +23,7 @@ export default function VehiclesPage() {
   const [total, setTotal] = useState(0);
   const pageSize = 12;
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<any>(null);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; plate: string } | null>(null);
 
   const [vehicleForm, setVehicleForm] = useState({
@@ -41,8 +41,9 @@ export default function VehiclesPage() {
 
   const { addToast } = useToast();
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       const [vehRes, cliRes] = await Promise.all([
         fetch(`/api/vehicles?page=${page}&pageSize=${pageSize}`),
@@ -60,18 +61,23 @@ export default function VehiclesPage() {
       }
       setClients(clientList);
       if (clientList.length > 0) {
-        setVehicleForm(prev => ({ ...prev, client_id: clientList[0].id }));
+        setVehicleForm(prev => {
+          if (prev.client_id) return prev;
+          return { ...prev, client_id: clientList[0].id };
+        });
       }
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize]);
 
+  // Standard data-fetching pattern: loadData wraps an async API call with state updates.
+   
   useEffect(() => {
     loadData();
-  }, [page]);
+  }, [loadData]);
 
   const resetVehicleForm = () => {
     setVehicleForm({

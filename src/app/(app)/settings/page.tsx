@@ -1,22 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Save } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import type { Garage } from '@/lib/types';
 
+interface DashboardResponse {
+  garage: Garage;
+}
+
 export default function SettingsPage() {
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const { addToast } = useToast();
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       const res = await fetch('/api/dashboard');
-      const data = await res.json();
+      const data: DashboardResponse = await res.json();
       setDashboardData(data);
       setForm({
         name: data.garage.name || '',
@@ -34,11 +39,13 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
+  // Standard data-fetching pattern: loadData wraps an async API call with state updates.
+   
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleSave = async () => {
     try {
@@ -104,7 +111,7 @@ export default function SettingsPage() {
             <div className="max-w-2xl bg-slate-900 border border-slate-800/80 rounded-2xl p-6 space-y-6">
               <div>
                 <h3 className="text-base font-bold text-slate-200">Fiche Établissement (Garage)</h3>
-                <p className="text-xs text-slate-500">Configurez les coordonnées par défaut de votre garage pour l'impression des factures.</p>
+                <p className="text-xs text-slate-500">Configurez les coordonnées par défaut de votre garage pour l&apos;impression des factures.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

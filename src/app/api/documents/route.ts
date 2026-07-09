@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     const { type, client_id, vehicle_id, notes, lines } = validation.data;
 
     // Call public.next_document_number helper via prisma queryRaw to get formatted sequence number
-    const result: any[] = await prisma.$queryRawUnsafe(
+    const result: { num: string }[] = await prisma.$queryRawUnsafe(
       `SELECT public.next_document_number($1, $2) as num`,
       ctx.garage.id,
       type

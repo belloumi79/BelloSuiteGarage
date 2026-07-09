@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Wrench } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export default function Error({
   error,

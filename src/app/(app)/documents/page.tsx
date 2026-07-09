@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
@@ -15,7 +15,19 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
-import type { Document, Client, Vehicle, Item } from '@/lib/types';
+import type { Document, Client, Vehicle, Item, DocumentLine } from '@/lib/types';
+
+interface DashboardData {
+  garage?: {
+    name: string;
+    legal_name: string | null;
+    address_line1: string | null;
+    city: string | null;
+    tax_id: string | null;
+    phone: string | null;
+    invoice_footer: string | null;
+  };
+}
 
 type DocumentLineForm = {
   item_id?: string | null;
@@ -44,7 +56,7 @@ export default function DocumentsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 250);
@@ -55,8 +67,8 @@ export default function DocumentsPage() {
 
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<any>(null);
-  const [editingDoc, setEditingDoc] = useState<any>(null);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; number: string } | null>(null);
 
   const { addToast } = useToast();
@@ -81,8 +93,9 @@ export default function DocumentsPage() {
     notes: ''
   });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       const [docsRes, clientsRes, vehiclesRes, itemsRes, dashRes] = await Promise.all([
         fetch(`/api/documents?page=${page}&pageSize=${pageSize}`),
@@ -111,27 +124,38 @@ export default function DocumentsPage() {
       setDashboardData(dash);
 
       if (clientList.length > 0) {
-        setDocForm(prev => ({ ...prev, client_id: clientList[0].id }));
+        setDocForm(prev => {
+          if (prev.client_id) return prev;
+          return { ...prev, client_id: clientList[0].id };
+        });
       }
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize]);
 
+  // Standard data-fetching pattern: loadData wraps an async API call with state updates.
+   
   useEffect(() => {
     loadData();
-  }, [page]);
+  }, [loadData]);
 
   useEffect(() => {
     if (docForm.client_id) {
       const clientVehicles = vehicles.filter(v => v.client_id === docForm.client_id);
       if (clientVehicles.length > 0) {
-        setDocForm(prev => ({ ...prev, vehicle_id: clientVehicles[0].id }));
+        const firstVehicleId = clientVehicles[0].id;
+        if (docForm.vehicle_id !== firstVehicleId) {
+          // Defer state update to avoid cascading renders during render phase
+          queueMicrotask(() => {
+            setDocForm(prev => ({ ...prev, vehicle_id: firstVehicleId }));
+          });
+        }
       }
     }
-  }, [docForm.client_id, vehicles]);
+  }, [docForm.client_id, vehicles, docForm.vehicle_id]);
 
   const addLineItem = () => {
     const matchedItem = items.find(i => i.id === selectedItemToAdd);
@@ -296,7 +320,7 @@ export default function DocumentsPage() {
   };
 
   const docTotals = docForm.lines.reduce(
-    (acc: any, line: any) => {
+    (acc: { ht: number; vat: number; ttc: number }, line: DocumentLineForm) => {
       acc.ht += line.total_ht;
       acc.vat += line.total_vat;
       acc.ttc += line.total_ttc;
@@ -332,11 +356,11 @@ export default function DocumentsPage() {
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div className="border border-gray-200 p-4 rounded">
               <h3 className="font-semibold text-gray-600 text-xs uppercase mb-2">Destinataire / Client</h3>
-              <p className="font-bold">{selectedDoc.clients.company_name || `${selectedDoc.clients.first_name} ${selectedDoc.clients.last_name}`}</p>
-              <p>{selectedDoc.clients.address_line1}</p>
-              <p>{selectedDoc.clients.postal_code} {selectedDoc.clients.city}</p>
-              <p>Tél : {selectedDoc.clients.phone}</p>
-              {selectedDoc.clients.tax_id && <p>MF : {selectedDoc.clients.tax_id}</p>}
+              <p className="font-bold">{selectedDoc.clients?.company_name || `${selectedDoc.clients?.first_name} ${selectedDoc.clients?.last_name}`}</p>
+              <p>{selectedDoc.clients?.address_line1}</p>
+              <p>{selectedDoc.clients?.postal_code} {selectedDoc.clients?.city}</p>
+              <p>Tél : {selectedDoc.clients?.phone}</p>
+              {selectedDoc.clients?.tax_id && <p>MF : {selectedDoc.clients?.tax_id}</p>}
             </div>
             <div className="border border-gray-200 p-4 rounded">
               <h3 className="font-semibold text-gray-600 text-xs uppercase mb-2">Véhicule</h3>
@@ -344,7 +368,6 @@ export default function DocumentsPage() {
                 <>
                   <p className="font-bold">{selectedDoc.vehicles.make} {selectedDoc.vehicles.model}</p>
                   <p>Immat : {selectedDoc.vehicles.plate}</p>
-                  {selectedDoc.mileage_in && <p>Km Entrée : {selectedDoc.mileage_in} Km</p>}
                   <p>Énergie : {selectedDoc.vehicles.fuel} | Couleur : {selectedDoc.vehicles.color}</p>
                 </>
               ) : (
@@ -360,7 +383,7 @@ export default function DocumentsPage() {
                 <th className="p-3 border border-gray-200">Description</th>
                 <th className="p-3 border border-gray-200 text-right">Qté</th>
                 <th className="p-3 border border-gray-200 text-right">P.U HT</th>
-                {selectedDoc.document_lines.some((l: any) => Number(l.discount_percent) > 0) && (
+                {selectedDoc.document_lines?.some((l: DocumentLine) => Number(l.discount_percent) > 0) && (
                   <th className="p-3 border border-gray-200 text-right">Rem.</th>
                 )}
                 <th className="p-3 border border-gray-200 text-right">TVA</th>
@@ -368,13 +391,13 @@ export default function DocumentsPage() {
               </tr>
             </thead>
             <tbody>
-              {selectedDoc.document_lines.map((line: any) => (
+              {selectedDoc.document_lines?.map((line: DocumentLine) => (
                 <tr key={line.id} className="border-b border-gray-200">
-                  <td className="p-3 border border-gray-100 font-mono text-xs">{line.itemId ? items.find(i => i.id === line.itemId)?.reference : 'MO'}</td>
+                  <td className="p-3 border border-gray-100 font-mono text-xs">{line.item_id ? items.find(i => i.id === line.item_id)?.reference : 'MO'}</td>
                   <td className="p-3 border border-gray-100">{line.description}</td>
                   <td className="p-3 border border-gray-100 text-right">{Number(line.quantity).toFixed(1)}</td>
                   <td className="p-3 border border-gray-100 text-right">{Number(line.unit_price).toFixed(2)}</td>
-                  {selectedDoc.document_lines.some((l: any) => Number(l.discount_percent) > 0) && (
+                  {selectedDoc.document_lines?.some((l: DocumentLine) => Number(l.discount_percent) > 0) && (
                     <td className="p-3 border border-gray-100 text-right">{Number(line.discount_percent) > 0 ? `${Number(line.discount_percent)}%` : '-'}</td>
                   )}
                   <td className="p-3 border border-gray-100 text-right">{Number(line.vat_rate)}%</td>
@@ -599,7 +622,7 @@ export default function DocumentsPage() {
                               client_id: doc.client_id,
                               vehicle_id: doc.vehicle_id || '',
                               notes: doc.notes || '',
-                              lines: (doc.document_lines || []).map((l: any) => ({
+                              lines: (doc.document_lines || []).map((l: DocumentLine) => ({
                                 item_id: l.item_id || '',
                                 description: l.description || '',
                                 line_type: l.line_type || '',
@@ -699,7 +722,7 @@ export default function DocumentsPage() {
               </div>
 
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h4 className="text-xs font-bold text-slate-300">Ajouter des lignes (Pièces & Main-d'œuvre)</h4>
+                <h4 className="text-xs font-bold text-slate-300">{"Ajouter des lignes (Pièces & Main-d'œuvre)"}</h4>
                 <div className="grid grid-cols-12 gap-3 items-end">
                   <div className="col-span-5">
                     <label className="text-[10px] text-slate-500 block mb-1">Article</label>
@@ -766,7 +789,7 @@ export default function DocumentsPage() {
                         <td colSpan={6} className="p-8 text-center text-slate-500">Aucun article ajouté. Utilisez le sélecteur ci-dessus pour ajouter des lignes.</td>
                       </tr>
                     ) : (
-                      docForm.lines.map((line: any, idx: number) => (
+                      docForm.lines.map((line: DocumentLineForm, idx: number) => (
                         <tr key={idx} className="border-b border-slate-800">
                           <td className="p-3 text-slate-200 font-medium">{line.description}</td>
                           <td className="p-3 text-right text-slate-300 font-mono">{Number(line.unit_price).toFixed(2)} DT</td>

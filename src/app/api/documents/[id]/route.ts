@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -105,7 +105,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Invalid document transition' }, { status: 400 });
       }
 
-      const result: any[] = await prisma.$queryRawUnsafe(
+      const result: { num: string }[] = await prisma.$queryRawUnsafe(
         `SELECT public.next_document_number($1, $2) as num`,
         originalDoc.garage_id,
         targetType
@@ -180,7 +180,13 @@ export async function PUT(
     }
 
     // B. Handle regular update (status, notes, and lines)
-    const updateData: any = {};
+    const updateData: {
+      status?: document_status;
+      notes?: string | null;
+      subtotal_ht?: number;
+      total_vat?: number;
+      total_ttc?: number;
+    } = {};
     if (status) updateData.status = status as document_status;
     if (notes !== undefined) updateData.notes = notes;
 
@@ -193,8 +199,19 @@ export async function PUT(
       // First, delete old lines
       await prisma.document_lines.deleteMany({ where: { document_id: id, garage_id: ctx.garage.id } });
 
+      type LineInput = {
+        item_id?: string | null;
+        line_type?: string;
+        description?: string;
+        quantity?: number;
+        unit?: string;
+        unit_price?: number;
+        discount_percent?: number;
+        vat_rate?: number;
+      };
+
       // Build new lines list
-      const formattedLines = lines.map((line: any, index: number) => {
+      const formattedLines = lines.map((line: LineInput, index: number) => {
         const qty = Number(line.quantity || 1);
         const price = Number(line.unit_price || 0);
         const disc = Number(line.discount_percent || 0);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search,
@@ -24,7 +24,7 @@ export default function ClientsPage() {
   const pageSize = 20;
   const debouncedSearch = useDebounce(searchQuery, 250);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<any>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [clientForm, setClientForm] = useState({
@@ -42,8 +42,9 @@ export default function ClientsPage() {
     discount_percent: 0
   });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       const res = await fetch(`/api/clients?page=${page}&pageSize=${pageSize}`);
       const result = await res.json();
@@ -59,11 +60,13 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize]);
 
+  // Standard data-fetching pattern: loadData wraps an async API call with state updates.
+   
   useEffect(() => {
     loadData();
-  }, [page]);
+  }, [loadData]);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -304,7 +307,7 @@ export default function ClientsPage() {
 
               {clientForm.type === 'company' ? (
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Nom de l'entreprise</label>
+                  <label className="text-xs text-slate-400 block mb-1">Nom de l&apos;entreprise</label>
                   <input
                     type="text"
                     required

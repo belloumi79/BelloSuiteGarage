@@ -105,12 +105,22 @@ export async function PUT(
         return NextResponse.json({ error: 'Invalid document transition' }, { status: 400 });
       }
 
-      const result: { num: string }[] = await prisma.$queryRawUnsafe(
-        `SELECT public.next_document_number($1, $2) as num`,
-        originalDoc.garage_id,
-        targetType
-      );
-      const docNumber = result[0]?.num || `${targetType.toUpperCase()}-${Date.now()}`;
+      let docNumber = '';
+      try {
+        const result: { num: string }[] = await prisma.$queryRawUnsafe(
+          `SELECT public.next_document_number($1, $2) as num`,
+          originalDoc.garage_id,
+          targetType
+        );
+        docNumber = result[0]?.num ?? '';
+      } catch (rawErr) {
+        console.warn('[documents/transition] next_document_number failed, falling back:', rawErr);
+      }
+      if (!docNumber) {
+        const now = new Date();
+        const prefix = targetType === 'invoice' ? 'FA' : 'OR';
+        docNumber = `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getTime()).slice(-4)}`;
+      }
 
       const newDoc = await prisma.$transaction(async tx => {
         const created = await tx.documents.create({

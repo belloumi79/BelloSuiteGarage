@@ -101,12 +101,23 @@ export async function POST(request: Request) {
     const { type, client_id, vehicle_id, notes, lines } = validation.data;
 
     // Call public.next_document_number helper via prisma queryRaw to get formatted sequence number
-    const result: { num: string }[] = await prisma.$queryRawUnsafe(
-      `SELECT public.next_document_number($1, $2) as num`,
-      ctx.garage.id,
-      type
-    );
-    const docNumber = result[0]?.num || `${type.toUpperCase()}-${Date.now()}`;
+    let docNumber = '';
+    try {
+      const result: { num: string }[] = await prisma.$queryRawUnsafe(
+        `SELECT public.next_document_number($1, $2) as num`,
+        ctx.garage.id,
+        type
+      );
+      docNumber = result[0]?.num ?? '';
+    } catch (rawErr) {
+      console.warn('[documents/create] next_document_number failed, falling back to manual numbering:', rawErr);
+    }
+    if (!docNumber) {
+      // Fallback when SQL helper is missing/test environment
+      const now = new Date();
+      const prefix = type === 'invoice' ? 'FA' : type === 'quote' ? 'DE' : 'OR';
+      docNumber = `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getTime()).slice(-4)}`;
+    }
 
     // 1. Calculate line prices and sum totals
     let subtotal_ht = 0;

@@ -228,12 +228,16 @@ export default function DocumentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      if (res.ok) {
-        setIsDocModalOpen(false);
-        resetDocForm();
-        loadData();
-        addToast(isEdit ? 'Document modifié' : 'Document créé');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Erreur ${res.status}` }));
+        console.error('Server error:', err);
+        addToast(err.error || JSON.stringify(err.details) || `Erreur ${res.status}`, 'error');
+        return;
       }
+      setIsDocModalOpen(false);
+      resetDocForm();
+      loadData();
+      addToast(isEdit ? 'Document modifié' : 'Document créé');
     } catch (err) {
       console.error(err);
       addToast('Erreur lors de la sauvegarde', 'error');
@@ -247,13 +251,17 @@ export default function DocumentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transitionTo: nextType })
       });
-      if (res.ok) {
-        setSelectedDoc(null);
-        loadData();
-        addToast(`Document converti en ${nextType === 'repair_order' ? 'ordre de réparation' : 'facture'}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Erreur ${res.status}` }));
+        addToast(err.error || 'Erreur de conversion', 'error');
+        return;
       }
+      setSelectedDoc(null);
+      loadData();
+      addToast(`Document converti en ${nextType === 'repair_order' ? 'ordre de réparation' : 'facture'}`);
     } catch (err) {
       console.error(err);
+      addToast('Erreur de conversion', 'error');
     }
   };
 
@@ -281,19 +289,22 @@ export default function DocumentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paymentForm)
       });
-      if (res.ok) {
-        setIsPaymentModalOpen(false);
-        setPaymentForm({
-          document_id: '',
-          amount: 0,
-          method: 'cash',
-          reference: '',
-          notes: ''
-        });
-        setSelectedDoc(null);
-        loadData();
-        addToast('Paiement enregistré');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Erreur ${res.status}` }));
+        addToast(err.error || JSON.stringify(err.details) || `Erreur ${res.status}`, 'error');
+        return;
       }
+      setIsPaymentModalOpen(false);
+      setPaymentForm({
+        document_id: '',
+        amount: 0,
+        method: 'cash',
+        reference: '',
+        notes: ''
+      });
+      setSelectedDoc(null);
+      loadData();
+      addToast('Paiement enregistré');
     } catch (err) {
       console.error(err);
       addToast('Erreur lors du paiement', 'error');

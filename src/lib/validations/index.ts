@@ -98,7 +98,7 @@ export const documentLineSchema = z.object({
 export const documentCreateSchema = z.object({
     type: z.enum(['quote', 'repair_order', 'invoice', 'credit_note']),
     client_id: z.string().uuid(),
-    vehicle_id: z.string().uuid().optional(),
+    vehicle_id: z.preprocess((val) => val === '' ? undefined : val, z.string().uuid().optional()),
     notes: z.string().optional(),
     lines: z.array(documentLineSchema).min(1, 'At least one line is required'),
 });
@@ -108,6 +108,7 @@ export const documentUpdateSchema = z.object({
     notes: z.string().optional(),
     lines: z.array(documentLineSchema).optional(),
     transitionTo: z.enum(['repair_order', 'invoice']).optional(),
+    vehicle_id: z.preprocess((val) => val === '' ? undefined : val, z.string().uuid().optional()),
 });
 
 /**

@@ -84,15 +84,21 @@ export const itemUpdateSchema = itemCreateSchema.partial();
 /**
  * Document validation schemas
  */
+function coerceToNumber(val: unknown) {
+    if (val === null || val === undefined) return undefined;
+    const n = Number(val);
+    return Number.isFinite(n) ? n : undefined;
+}
+
 export const documentLineSchema = z.object({
-    item_id: z.string().uuid().optional(),
+    item_id: z.preprocess((val) => val === '' ? undefined : val, z.string().uuid().optional()),
     line_type: z.enum(['part', 'labor', 'service', 'note']).default('part'),
     description: z.string().min(1),
-    quantity: z.number().min(0.001),
+    quantity: z.preprocess(coerceToNumber, z.number().min(0.001)),
     unit: z.string().default('pcs'),
-    unit_price: z.number().min(0),
-    discount_percent: z.number().min(0).max(100).default(0),
-    vat_rate: z.number().min(0).max(100).default(19),
+    unit_price: z.preprocess(coerceToNumber, z.number().min(0)),
+    discount_percent: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(0)),
+    vat_rate: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(19)),
 });
 
 export const documentCreateSchema = z.object({

@@ -92,6 +92,7 @@ export async function POST(request: Request) {
     // Validate input with Zod
     const validation = documentCreateSchema.safeParse(body);
     if (!validation.success) {
+      console.error('[documents POST] Validation failed:', JSON.stringify(validation.error.flatten().fieldErrors, null, 2), '\nBody:', JSON.stringify(body, null, 2));
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
         { status: 400 }

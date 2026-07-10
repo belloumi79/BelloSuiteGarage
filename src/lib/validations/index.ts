@@ -99,6 +99,10 @@ export const documentLineSchema = z.object({
     unit_price: z.preprocess(coerceToNumber, z.number().min(0)),
     discount_percent: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(0)),
     vat_rate: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(19)),
+    // Accept client-provided totals (ignored server-side; recalculated in handler)
+    total_ht: z.preprocess(coerceToNumber, z.number().min(0).optional()),
+    total_vat: z.preprocess(coerceToNumber, z.number().min(0).optional()),
+    total_ttc: z.preprocess(coerceToNumber, z.number().min(0).optional()),
 });
 
 export const documentCreateSchema = z.object({

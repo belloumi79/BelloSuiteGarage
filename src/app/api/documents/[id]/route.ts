@@ -1,4 +1,3 @@
-
 import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -6,6 +5,21 @@ import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
 import { documentUpdateSchema } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
+
+function coerceNumericStrings(value: unknown): unknown {
+    if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value)) {
+        return Number(value);
+    }
+    if (Array.isArray(value)) {
+        return value.map(coerceNumericStrings);
+    }
+    if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+        return Object.fromEntries(
+            Object.entries(value).map(([k, v]) => [k, coerceNumericStrings(v)])
+        );
+    }
+    return value;
+}
 
 export async function GET(
   request: Request,
@@ -68,7 +82,8 @@ export async function PUT(
     const ctx = await getCurrentGarage();
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await request.json();
+    const rawBody = await request.json();
+    const body = coerceNumericStrings(rawBody) as Record<string, unknown>;
 
     const validation = documentUpdateSchema.safeParse(body);
     if (!validation.success) {

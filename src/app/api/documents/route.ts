@@ -1,11 +1,32 @@
-
 import { getErrorMessage } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
-import { documentCreateSchema, documentLineSchema } from '@/lib/validations';
+import { documentCreateSchema } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
+
+/**
+ * Prisma serializes Decimal values as strings in JSON.
+ * When the client re-sends these values, numeric fields arrive as
+ * strings (e.g. "19.00") and strict Zod schemas reject them.
+ * This helper recursively converts numeric-looking strings back to
+ * numbers so validation succeeds without weakening type safety.
+ */
+function coerceNumericStrings(value: unknown): unknown {
+    if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value)) {
+        return Number(value);
+    }
+    if (Array.isArray(value)) {
+        return value.map(coerceNumericStrings);
+    }
+    if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+        return Object.fromEntries(
+            Object.entries(value).map(([k, v]) => [k, coerceNumericStrings(v)])
+        );
+    }
+    return value;
+}
 
 export async function GET(request: Request) {
   try {
@@ -87,7 +108,8 @@ export async function POST(request: Request) {
     const ctx = await getCurrentGarage();
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await request.json();
+    const rawBody = await request.json();
+    const body = coerceNumericStrings(rawBody) as Record<string, unknown>;
 
     // Validate input with Zod
     const validation = documentCreateSchema.safeParse(body);

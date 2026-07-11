@@ -90,7 +90,7 @@ function coerceToNumber(val: unknown) {
     return Number.isFinite(n) ? n : undefined;
 }
 
-const lineTypeSchema = z.enum(['part', 'labor', 'service', 'note']);
+const lineTypeSchema = z.enum(['part', 'labor', 'service', 'note', 'product']);
 
 export const documentLineSchema = z.object({
     item_id: z.preprocess((val) => val === '' ? undefined : val, z.string().uuid().optional()),

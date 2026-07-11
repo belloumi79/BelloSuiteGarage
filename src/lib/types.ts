@@ -49,7 +49,7 @@ export interface Item {
   garage_id: string;
   category_id: string | null;
   supplier_id: string | null;
-  type: 'part' | 'labor' | 'service';
+  type: 'part' | 'labor' | 'service' | 'product';
   reference: string | null;
   barcode: string | null;
   name: string;

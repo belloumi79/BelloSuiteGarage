@@ -636,7 +636,7 @@ export default function DocumentsPage() {
                               lines: (doc.document_lines || []).map((l: DocumentLine) => ({
                                 item_id: l.item_id || '',
                                 description: l.description || '',
-                                line_type: l.line_type || '',
+                                line_type: l.line_type || 'part',
                                 quantity: Number(l.quantity),
                                 unit: l.unit || 'pcs',
                                 unit_price: Number(l.unit_price),

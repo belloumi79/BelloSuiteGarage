@@ -26,7 +26,10 @@ export async function getCurrentGarage() {
             data: { user },
         } = await supabase.auth.getUser();
 
-        if (!user) return null;
+        if (!user) {
+            console.error('[getCurrentGarage] No authenticated user (session missing/expired).');
+            return null;
+        }
 
         const membership = await prisma.garage_members.findFirst({
             where: {
@@ -38,7 +41,10 @@ export async function getCurrentGarage() {
             },
         });
 
-        if (!membership?.garages) return null;
+        if (!membership?.garages) {
+            console.error('[getCurrentGarage] User has no active garage_membership:', user.id);
+            return null;
+        }
 
         return { user, garage: membership.garages };
     } catch (err) {

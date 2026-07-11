@@ -8,6 +8,7 @@
  * }
  */
 export function getErrorMessage(error: unknown): string {
+  console.error('[getErrorMessage] Captured error:', error);
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
   return 'Une erreur inattendue est survenue';

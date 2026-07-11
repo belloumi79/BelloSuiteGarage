@@ -43,6 +43,10 @@ export async function proxy(request: NextRequest) {
             data: { user },
         } = await supabase.auth.getUser();
 
+        console.error(
+            `[proxy] path=${request.nextUrl.pathname} user=${user ? user.id : 'NONE'}`
+        );
+
         // Protect API routes — return 401 JSON for unauthenticated callers.
         // This uses a fresh response so cookie loss is irrelevant for 401.
         const protectedApiPaths = ['/api/clients', '/api/vehicles', '/api/documents', '/api/items', '/api/payments', '/api/agenda', '/api/dashboard'];

@@ -104,23 +104,19 @@ export default function DocumentsPage() {
         fetch('/api/items'),
         fetch('/api/dashboard')
       ]);
-      const docs = await docsRes.json();
-      const cli = await clientsRes.json();
-      const veh = await vehiclesRes.json();
-      const itm = await itemsRes.json();
-      const dash = await dashRes.json();
+      const docs = docsRes.ok ? await docsRes.json() : { data: [], total: 0 };
+      const cli = clientsRes.ok ? await clientsRes.json() : [];
+      const veh = vehiclesRes.ok ? await vehiclesRes.json() : [];
+      const itm = itemsRes.ok ? await itemsRes.json() : [];
+      const dash = dashRes.ok ? await dashRes.json() : null;
 
-      const clientList = cli.data ?? cli;
-      if (Array.isArray(docs)) {
-        setDocuments(docs);
-        setTotal(docs.length);
-      } else {
-        setDocuments(docs.data ?? []);
-        setTotal(docs.total ?? 0);
-      }
+      const clientList = Array.isArray(cli) ? cli : (cli.data ?? []);
+      const docList = Array.isArray(docs) ? docs : (docs.data ?? []);
+      setDocuments(docList);
+      setTotal(Array.isArray(docs) ? docs.length : (docs.total ?? 0));
       setClients(clientList);
-      setVehicles(veh.data ?? veh);
-      setItems(itm.data ?? itm);
+      setVehicles(Array.isArray(veh) ? veh : (veh.data ?? []));
+      setItems(Array.isArray(itm) ? itm : (itm.data ?? []));
       setDashboardData(dash);
 
       if (clientList.length > 0) {

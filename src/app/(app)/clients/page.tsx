@@ -47,14 +47,10 @@ export default function ClientsPage() {
       await Promise.resolve();
       setLoading(true);
       const res = await fetch(`/api/clients?page=${page}&pageSize=${pageSize}`);
-      const result = await res.json();
-      if (Array.isArray(result)) {
-        setClients(result);
-        setTotal(result.length);
-      } else {
-        setClients(result.data ?? []);
-        setTotal(result.total ?? 0);
-      }
+      const result = res.ok ? await res.json() : { data: [], total: 0 };
+      const clientList = Array.isArray(result) ? result : (result.data ?? []);
+      setClients(clientList);
+      setTotal(Array.isArray(result) ? result.length : (result.total ?? 0));
     } catch (error) {
       console.error('Failed to load clients:', error);
     } finally {

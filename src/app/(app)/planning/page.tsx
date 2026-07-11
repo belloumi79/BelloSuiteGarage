@@ -47,12 +47,12 @@ export default function PlanningPage() {
         fetch('/api/clients'),
         fetch('/api/vehicles')
       ]);
-      const agd = await agdRes.json();
-      const cli = await cliRes.json();
-      const veh = await vehRes.json();
-      setAgenda(agd.data ?? agd);
-      setClients(cli.data ?? cli);
-      setVehicles(veh.data ?? veh);
+      const agd = agdRes.ok ? await agdRes.json() : [];
+      const cli = cliRes.ok ? await cliRes.json() : [];
+      const veh = vehRes.ok ? await vehRes.json() : [];
+      setAgenda(Array.isArray(agd) ? agd : (agd.data ?? []));
+      setClients(Array.isArray(cli) ? cli : (cli.data ?? []));
+      setVehicles(Array.isArray(veh) ? veh : (veh.data ?? []));
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {

@@ -46,14 +46,10 @@ export default function ItemsPage() {
       await Promise.resolve();
       setLoading(true);
       const res = await fetch(`/api/items?page=${page}&pageSize=${pageSize}`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setItems(data);
-        setTotal(data.length);
-      } else {
-        setItems(data.data ?? []);
-        setTotal(data.total ?? 0);
-      }
+      const data = res.ok ? await res.json() : { data: [], total: 0 };
+      const itemList = Array.isArray(data) ? data : (data.data ?? []);
+      setItems(itemList);
+      setTotal(Array.isArray(data) ? data.length : (data.total ?? 0));
     } catch (error) {
       console.error('Failed to load items:', error);
     } finally {

@@ -72,14 +72,11 @@ export async function GET() {
     });
 
     // 4. Low stock items count
-    const lowStockItems = await prisma.items.findMany({
+    const allParts = await prisma.items.findMany({
       where: {
         garage_id: garage.id,
         type: 'part',
         active: true,
-        stock_qty: {
-          lte: prisma.items.fields.stock_min,
-        },
       },
       select: {
         id: true,
@@ -89,6 +86,9 @@ export async function GET() {
         stock_min: true,
       },
     });
+    const lowStockItems = allParts.filter(
+      (it) => Number(it.stock_qty) <= Number(it.stock_min)
+    );
 
     // 5. Today's appointments
     const todayAppointments = await prisma.agenda_events.findMany({

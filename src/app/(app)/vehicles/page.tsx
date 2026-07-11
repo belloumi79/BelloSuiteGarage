@@ -49,16 +49,12 @@ export default function VehiclesPage() {
         fetch(`/api/vehicles?page=${page}&pageSize=${pageSize}`),
         fetch('/api/clients')
       ]);
-      const veh = await vehRes.json();
-      const cli = await cliRes.json();
-      const clientList = cli.data ?? cli;
-      if (Array.isArray(veh)) {
-        setVehicles(veh);
-        setTotal(veh.length);
-      } else {
-        setVehicles(veh.data ?? []);
-        setTotal(veh.total ?? 0);
-      }
+      const veh = vehRes.ok ? await vehRes.json() : { data: [], total: 0 };
+      const cli = cliRes.ok ? await cliRes.json() : [];
+      const clientList = Array.isArray(cli) ? cli : (cli.data ?? []);
+      const vehList = Array.isArray(veh) ? veh : (veh.data ?? []);
+      setVehicles(vehList);
+      setTotal(Array.isArray(veh) ? veh.length : (veh.total ?? 0));
       setClients(clientList);
       if (clientList.length > 0) {
         setVehicleForm(prev => {

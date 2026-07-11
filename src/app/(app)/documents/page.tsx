@@ -231,7 +231,8 @@ export default function DocumentsPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `Erreur ${res.status}` }));
         console.error('Server error:', err);
-        addToast(err.error || JSON.stringify(err.details) || `Erreur ${res.status}`, 'error');
+        const msg = err.error || JSON.stringify(err.issues) || JSON.stringify(err.details) || `Erreur ${res.status}`;
+        addToast(msg, 'error');
         return;
       }
       setIsDocModalOpen(false);
@@ -634,9 +635,9 @@ export default function DocumentsPage() {
                               client_id: doc.client_id,
                               vehicle_id: doc.vehicle_id || '',
                               notes: doc.notes || '',
-                              lines: (doc.document_lines || []).map((l: DocumentLine) => ({
+                              lines: (doc.document_lines || []).map((l: DocumentLine, idx: number) => ({
                                 item_id: l.item_id || '',
-                                description: l.description || '',
+                                description: l.description || `Ligne ${idx + 1}`,
                                 line_type: l.line_type || 'part',
                                 quantity: Number(l.quantity),
                                 unit: l.unit || 'pcs',

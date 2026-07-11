@@ -108,17 +108,30 @@ export async function POST(request: Request) {
     const ctx = await getCurrentGarage();
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const rawBody = await request.json();
-    const body = coerceNumericStrings(rawBody) as Record<string, unknown>;
+    let rawBody: Record<string, unknown> = {};
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const body = coerceNumericStrings(rawBody);
 
     // Validate input with Zod
     const validation = documentCreateSchema.safeParse(body);
     if (!validation.success) {
-      console.error('[documents POST] Validation failed:', JSON.stringify(validation.error.flatten().fieldErrors, null, 2), '\nBody:', JSON.stringify(body, null, 2));
-      return NextResponse.json(
-        { error: 'Validation failed', details: validation.error.flatten().fieldErrors },
-        { status: 400 }
-      );
+      const issues = validation.error.issues.map((i) => ({
+        path: i.path.join('.'),
+        message: i.message,
+        code: i.code,
+        received: (i as unknown as Record<string, unknown>).received,
+      }));
+      const responsePayload = {
+        error: 'Validation failed',
+        issues,
+        receivedBody: rawBody,
+      };
+      console.error('[documents POST]', JSON.stringify(responsePayload, null, 2));
+      return NextResponse.json(responsePayload, { status: 400 });
     }
 
     const { type, client_id, vehicle_id, notes, lines } = validation.data;

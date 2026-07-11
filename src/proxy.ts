@@ -16,7 +16,7 @@ export function createMiddlewareClient(request: NextRequest) {
                 return request.cookies.getAll();
             },
             setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value, options }) =>
+                cookiesToSet.forEach(({ name, value }) =>
                     request.cookies.set(name, value)
                 );
                 supabaseResponse = NextResponse.next({
@@ -36,33 +36,29 @@ export async function proxy(request: NextRequest) {
     try {
         const { supabase, supabaseResponse } = createMiddlewareClient(request);
 
-        // Refresh session if expired — this may call setAll to update cookies.
-        // IMPORTANT: we must NOT use NextResponse.redirect() after this point,
-        // because setAll's cookies would be lost on the redirect response.
+        // getSession() validates the local session and, when the access token
+        // is expired but a refresh token is present, transparently refreshes it
+        // and writes the new cookies via setAll. This keeps the session alive
+        // for the downstream Route Handlers (which re-validate with getUser()).
+        // Previously the proxy used getUser() and returned 401 on its own, which
+        // (a) doubled Supabase Auth calls per request (race/rate-limit flakiness)
+        // and (b) never refreshed an expired access token.
         const {
-            data: { user },
-        } = await supabase.auth.getUser();
+            data: { session },
+        } = await supabase.auth.getSession();
 
         console.error(
-            `[proxy] path=${request.nextUrl.pathname} user=${user ? user.id : 'NONE'}`
+            `[proxy] path=${request.nextUrl.pathname} session=${session ? session.user.id : 'NONE'}`
         );
 
-        // Protect API routes — return 401 JSON for unauthenticated callers.
-        // This uses a fresh response so cookie loss is irrelevant for 401.
-        const protectedApiPaths = ['/api/clients', '/api/vehicles', '/api/documents', '/api/items', '/api/payments', '/api/agenda', '/api/dashboard'];
-        const isProtectedApi = protectedApiPaths.some(path => request.nextUrl.pathname.startsWith(path));
-
-        if (isProtectedApi && !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        // Always return supabaseResponse (which carries any cookies setAll refreshed).
-        // Page auth is handled by (app)/layout.tsx via getCurrentGarage().
-        // Avoiding explicit page redirects here prevents the cookie-loss redirect loop.
+        // Auth enforcement is owned by each Route Handler via getCurrentGarage().
+        // The proxy only refreshes the session and lets the request through, so a
+        // transient auth-server hiccup can never produce a spurious 401 here.
         return supabaseResponse;
-    } catch {
+    } catch (err) {
         // If Supabase is not configured or unreachable, let the request through
-        // so the page/layout can handle it gracefully instead of 500-ing.
+        // so the route/layout can handle it gracefully instead of 500-ing.
+        console.error('[proxy] error:', err);
         return NextResponse.next();
     }
 }

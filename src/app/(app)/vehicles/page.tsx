@@ -62,8 +62,8 @@ export default function VehiclesPage() {
       setClients(clientList);
       if (clientList.length > 0) {
         setVehicleForm(prev => {
-          if (prev.client_id) return prev;
-          return { ...prev, client_id: clientList[0].id };
+          if (prev.client_id || clientList.length === 0) return prev;
+          return { ...prev, client_id: clientList[0]?.id ?? '' };
         });
       }
     } catch (error) {

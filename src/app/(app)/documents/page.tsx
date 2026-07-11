@@ -125,8 +125,8 @@ export default function DocumentsPage() {
 
       if (clientList.length > 0) {
         setDocForm(prev => {
-          if (prev.client_id) return prev;
-          return { ...prev, client_id: clientList[0].id };
+          if (prev.client_id || clientList.length === 0) return prev;
+          return { ...prev, client_id: clientList[0]?.id ?? '' };
         });
       }
     } catch (error) {
@@ -146,8 +146,8 @@ export default function DocumentsPage() {
     if (docForm.client_id) {
       const clientVehicles = vehicles.filter(v => v.client_id === docForm.client_id);
       if (clientVehicles.length > 0) {
-        const firstVehicleId = clientVehicles[0].id;
-        if (docForm.vehicle_id !== firstVehicleId) {
+        const firstVehicleId = clientVehicles[0]?.id;
+        if (firstVehicleId && docForm.vehicle_id !== firstVehicleId) {
           // Defer state update to avoid cascading renders during render phase
           queueMicrotask(() => {
             setDocForm(prev => ({ ...prev, vehicle_id: firstVehicleId }));
@@ -497,14 +497,15 @@ export default function DocumentsPage() {
               </select>
               <button
                 onClick={() => {
-                  if (clients.length === 0) {
+                  const firstClient = clients[0];
+                  if (!firstClient) {
                     alert('Créez au moins un client avant de générer un document.');
                     return;
                   }
                   setDocForm({
                     type: 'quote',
-                    client_id: clients[0].id,
-                    vehicle_id: vehicles.find(v => v.client_id === clients[0].id)?.id || '',
+                    client_id: firstClient.id ?? '',
+                    vehicle_id: vehicles.find(v => v.client_id === firstClient.id)?.id || '',
                     notes: '',
                     lines: []
                   });

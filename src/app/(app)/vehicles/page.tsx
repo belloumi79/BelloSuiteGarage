@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import makesData from '@/data/car-makes.json';
+import versionsData from '@/data/car-versions.json';
 import type { Vehicle, Client } from '@/lib/types';
 
 export default function VehiclesPage() {
@@ -324,16 +325,17 @@ export default function VehiclesPage() {
                   onChange={v => setVehicleForm(prev => ({ ...prev, model: v }))}
                   required
                 />
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Version / Motorisation</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 1.4 TSI"
-                    value={vehicleForm.version}
-                    onChange={(e) => setVehicleForm(prev => ({ ...prev, version: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  />
-                </div>
+                <SearchableSelect
+                  label="Version / Motorisation"
+                  placeholder="e.g. 1.4 TSI 150ch"
+                  options={
+                    vehicleForm.make && vehicleForm.model
+                      ? (versionsData as Record<string, Record<string, string[]>>)[vehicleForm.make]?.[vehicleForm.model] || []
+                      : []
+                  }
+                  value={vehicleForm.version}
+                  onChange={v => setVehicleForm(prev => ({ ...prev, version: v }))}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-4">

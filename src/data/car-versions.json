@@ -1,0 +1,265 @@
+{
+  "Alfa Romeo": {
+    "Giulia": ["2.0 Turbo 200ch", "2.0 Turbo 280ch", "2.2 Diesel 160ch", "2.2 Diesel 210ch", "Quadrifoglio 510ch"],
+    "Stelvio": ["2.0 Turbo 200ch", "2.0 Turbo 280ch", "2.2 Diesel 160ch", "2.2 Diesel 210ch", "Quadrifoglio 510ch"],
+    "Tonale": ["1.5 Hybrid 130ch", "1.5 Hybrid 160ch", "1.6 Diesel 130ch", "Plug-in Hybrid 280ch"]
+  },
+  "Audi": {
+    "A3": ["30 TFSI 110ch", "35 TFSI 150ch", "40 TFSI 190ch", "35 TDI 116ch", "40 TDI 150ch", "S3 310ch", "RS3 400ch"],
+    "A4": ["35 TFSI 150ch", "40 TFSI 190ch", "45 TFSI 245ch", "35 TDI 136ch", "40 TDI 190ch", "45 TDI 231ch", "S4 354ch", "RS4 450ch"],
+    "A5": ["40 TFSI 190ch", "45 TFSI 245ch", "35 TDI 136ch", "40 TDI 190ch", "S5 354ch", "RS5 450ch"],
+    "A6": ["40 TFSI 190ch", "45 TFSI 245ch", "55 TFSI 340ch", "40 TDI 190ch", "45 TDI 231ch", "50 TDI 286ch", "S6 450ch", "RS6 600ch"],
+    "Q5": ["35 TFSI 150ch", "40 TFSI 190ch", "45 TFSI 245ch", "40 TDI 190ch", "45 TDI 231ch", "50 TDI 286ch", "SQ5 354ch"],
+    "Q7": ["45 TFSI 245ch", "55 TFSI 340ch", "45 TDI 231ch", "50 TDI 286ch", "SQ7 507ch"],
+    "Q3": ["35 TFSI 150ch", "40 TFSI 190ch", "45 TFSI 230ch", "35 TDI 150ch", "40 TDI 190ch", "RS Q3 400ch"],
+    "e-tron GT": ["480ch", "RS e-tron GT 598ch", "RS e-tron GT Performance 646ch"]
+  },
+  "BMW": {
+    "Serie 1": ["116i 109ch", "118i 136ch", "120i 178ch", "116d 116ch", "118d 150ch", "120d 190ch", "M135i 306ch"],
+    "Serie 3": ["318i 156ch", "320i 184ch", "330i 258ch", "318d 150ch", "320d 190ch", "330d 286ch", "M340i 374ch", "M3 510ch"],
+    "Serie 5": ["520i 184ch", "530i 258ch", "540i 340ch", "520d 190ch", "530d 286ch", "540d 340ch", "M550i 530ch", "M5 600ch"],
+    "X3": ["sDrive18i 150ch", "xDrive20i 184ch", "xDrive30i 258ch", "xDrive20d 190ch", "xDrive30d 286ch", "M40i 360ch", "X3 M 510ch"],
+    "X5": ["xDrive30d 286ch", "xDrive40d 340ch", "xDrive40i 360ch", "xDrive50e 490ch", "M60i 530ch"],
+    "X1": ["sDrive18i 136ch", "sDrive20i 170ch", "xDrive20i 170ch", "sDrive18d 150ch", "xDrive20d 163ch", "xDrive25e 245ch"],
+    "i4": ["eDrive35 286ch", "eDrive40 340ch", "M50 544ch"],
+    "iX": ["xDrive40 326ch", "xDrive50 523ch", "M60 619ch"]
+  },
+  "Citroën": {
+    "C3": ["PureTech 82ch", "PureTech 110ch", "BlueHDi 100ch", "e-C3 113ch"],
+    "C4": ["PureTech 100ch", "PureTech 130ch", "BlueHDi 110ch", "BlueHDi 130ch", "e-C4 136ch"],
+    "C3 Aircross": ["PureTech 110ch", "PureTech 130ch", "BlueHDi 110ch"],
+    "C5 Aircross": ["PureTech 130ch", "PureTech 180ch", "BlueHDi 130ch", "Plug-in Hybrid 225ch"],
+    "Berlingo": ["PureTech 110ch", "BlueHDi 100ch", "BlueHDi 130ch", "e-Berlingo 136ch"]
+  },
+  "Cupra": {
+    "Leon": ["1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TSI 300ch", "1.4 e-Hybrid 204ch", "1.4 e-Hybrid 245ch"],
+    "Formentor": ["1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TSI 310ch", "1.4 e-Hybrid 204ch", "2.0 TDI 150ch", "VZ5 390ch"],
+    "Ateca": ["1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch"],
+    "Born": ["150ch", "204ch", "231ch", "e-Boost 231ch"]
+  },
+  "Dacia": {
+    "Sandero": ["SCe 65ch", "TCe 90ch", "TCe 110ch", "ECO-G 100ch"],
+    "Duster": ["TCe 130ch", "TCe 150ch 4x4", "Blue dCi 115ch", "ECO-G 100ch", "Hybrid 140ch"],
+    "Jogger": ["TCe 110ch", "ECO-G 100ch", "Hybrid 140ch"],
+    "Logan": ["SCe 65ch", "TCe 90ch", "TCe 110ch", "ECO-G 100ch"],
+    "Spring": ["45ch", "65ch"]
+  },
+  "Fiat": {
+    "500": ["1.2 69ch", "1.0 Hybrid 70ch", "500e 118ch", "Abarth 595 165ch", "Abarth 695 180ch"],
+    "500X": ["1.0 Hybrid 120ch", "1.3 MultiJet 95ch", "1.6 MultiJet 120ch"],
+    "Tipo": ["1.4 95ch", "1.0 Hybrid 100ch", "1.6 MultiJet 95ch", "1.6 MultiJet 120ch"],
+    "Panda": ["1.0 Hybrid 70ch", "1.2 69ch", "4x4 0.9 TwinAir 85ch"],
+    "Ducato": ["2.2 MultiJet 120ch", "2.2 MultiJet 140ch", "2.2 MultiJet 180ch"]
+  },
+  "Ford": {
+    "Focus": ["1.0 EcoBoost 100ch", "1.0 EcoBoost 125ch", "1.5 EcoBoost 150ch", "1.5 EcoBlue 95ch", "1.5 EcoBlue 120ch", "ST 280ch"],
+    "Puma": ["1.0 EcoBoost 125ch", "1.0 EcoBoost 155ch", "1.0 EcoBoost mHEV 155ch", "1.5 EcoBlue 120ch", "ST 200ch"],
+    "Kuga": ["1.5 EcoBoost 150ch", "2.5 Duratec PHEV 225ch", "2.0 EcoBlue 150ch", "2.0 EcoBlue 190ch"],
+    "Mustang": ["2.3 EcoBoost 290ch", "5.0 V8 GT 450ch", "Dark Horse 453ch", "Mach-E 269ch", "Mach-E GT 487ch"],
+    "Ranger": ["2.0 EcoBlue 170ch", "2.0 EcoBlue 205ch", "3.0 V6 240ch", "Raptor 3.0 V6 292ch"],
+    "Transit": ["2.0 EcoBlue 105ch", "2.0 EcoBlue 130ch", "2.0 EcoBlue 185ch", "e-Transit 269ch"]
+  },
+  "Honda": {
+    "Civic": ["1.0 VTEC 129ch", "1.5 VTEC 182ch", "2.0 e:HEV 184ch", "Type R 329ch"],
+    "CR-V": ["1.5 VTEC 173ch", "2.0 e:HEV 184ch", "2.0 Plug-in Hybrid 184ch"],
+    "HR-V": ["1.5 VTEC 129ch", "e:HEV 131ch"],
+    "Jazz": ["1.3 i-VTEC 102ch", "e:HEV 109ch"]
+  },
+  "Hyundai": {
+    "i10": ["1.0 MPi 67ch", "1.2 MPi 84ch", "N Line 100ch"],
+    "i20": ["1.2 MPi 84ch", "1.0 T-GDi 100ch", "1.0 T-GDi 120ch", "N 204ch"],
+    "i30": ["1.0 T-GDi 120ch", "1.5 T-GDi 160ch", "1.6 CRDi 116ch", "1.6 CRDi 136ch", "N 250ch", "N 280ch"],
+    "Tucson": ["1.6 T-GDi 150ch", "1.6 T-GDi 180ch", "1.6 CRDi 116ch", "1.6 CRDi 136ch", "Plug-in Hybrid 265ch", "N Line"],
+    "Kona": ["1.0 T-GDi 120ch", "1.6 T-GDi 198ch", "1.6 CRDi 136ch", "Electric 136ch", "Electric 204ch", "N 280ch"],
+    "Santa Fe": ["2.5 T-GDi 281ch", "1.6 T-GDi Hybrid 230ch", "1.6 T-GDi Plug-in 265ch", "2.2 CRDi 194ch"],
+    "IONIQ 5": ["Electric 170ch", "Electric 217ch", "Electric 306ch 4x4", "N 650ch"]
+  },
+  "Jeep": {
+    "Wrangler": ["2.0 Turbo 272ch", "3.6 V6 285ch", "4xe Plug-in 380ch"],
+    "Grand Cherokee": ["3.6 V6 286ch", "5.7 V8 352ch", "4xe Plug-in 380ch"],
+    "Renegade": ["1.0 T3 120ch", "1.3 T4 150ch", "1.6 MultiJet 120ch", "4xe Plug-in 240ch"],
+    "Compass": ["1.3 T4 130ch", "1.3 T4 150ch", "1.6 MultiJet 120ch", "4xe Plug-in 240ch"],
+    "Avenger": ["Electric 156ch", "1.2 T3 100ch"]
+  },
+  "Kia": {
+    "Picanto": ["1.0 MPi 67ch", "1.2 MPi 84ch", "GT Line 100ch"],
+    "Rio": ["1.2 MPi 84ch", "1.0 T-GDi 100ch", "1.0 T-GDi 120ch"],
+    "Sportage": ["1.6 T-GDi 150ch", "1.6 T-GDi 180ch", "1.6 CRDi 136ch", "Hybrid 230ch", "Plug-in Hybrid 265ch"],
+    "Ceed": ["1.0 T-GDi 120ch", "1.5 T-GDi 160ch", "1.6 CRDi 136ch", "GT 204ch"],
+    "Seltos": ["1.6 T-GDi 198ch", "1.6 CRDi 136ch"],
+    "EV6": ["Electric 170ch", "Electric 229ch", "Electric 325ch 4x4", "GT 585ch"],
+    "Stonic": ["1.0 T-GDi 100ch", "1.2 MPi 84ch", "1.6 CRDi 115ch"],
+    "Niro": ["1.6 GDi Hybrid 141ch", "1.6 GDi Plug-in 183ch", "Electric 204ch"]
+  },
+  "Land Rover": {
+    "Range Rover": ["3.0 D300 300ch", "3.0 D350 350ch", "3.0 P400 400ch", "4.4 V8 P530 530ch", "PHEV 460ch"],
+    "Range Rover Sport": ["3.0 D250 250ch", "3.0 D300 300ch", "3.0 P400 400ch", "4.4 V8 P530 530ch", "SV 635ch"],
+    "Range Rover Velar": ["2.0 D165 163ch", "2.0 D200 204ch", "3.0 D300 300ch", "2.0 P250 250ch", "3.0 P400 400ch"],
+    "Range Rover Evoque": ["1.5 P160 160ch", "2.0 D165 163ch", "2.0 D200 204ch", "PHEV 300ch"],
+    "Discovery": ["2.0 D165 163ch", "3.0 D300 300ch", "3.0 P360 360ch"],
+    "Discovery Sport": ["1.5 P160 160ch", "2.0 D165 163ch", "2.0 D200 204ch", "PHEV 300ch"],
+    "Defender": ["2.0 D200 200ch", "3.0 D250 250ch", "3.0 D300 300ch", "3.0 P300 300ch", "3.0 P400 400ch", "5.0 V8 525ch"]
+  },
+  "Mazda": {
+    "2": ["1.5 Skyactiv-G 75ch", "1.5 Skyactiv-G 90ch", "1.5 Skyactiv-D 105ch"],
+    "3": ["2.0 Skyactiv-G 122ch", "2.0 Skyactiv-G 150ch", "2.0 Skyactiv-X 186ch", "2.0 e-Skyactiv X 186ch"],
+    "6": ["2.0 Skyactiv-G 145ch", "2.5 Skyactiv-G 194ch", "2.2 Skyactiv-D 150ch", "2.2 Skyactiv-D 184ch"],
+    "CX-5": ["2.0 Skyactiv-G 165ch", "2.5 Skyactiv-G 194ch", "2.2 Skyactiv-D 150ch", "2.2 Skyactiv-D 184ch", "e-Skyactiv 186ch"],
+    "CX-30": ["2.0 Skyactiv-G 122ch", "2.0 e-Skyactiv G 150ch", "2.0 Skyactiv-X 186ch", "1.8 Skyactiv-D 116ch"],
+    "MX-5": ["1.5 Skyactiv-G 132ch", "2.0 Skyactiv-G 184ch"]
+  },
+  "Mercedes-Benz": {
+    "Classe A": ["A180 136ch", "A200 163ch", "A220 190ch", "A250 224ch", "A180d 116ch", "A200d 150ch", "AMG A35 306ch", "AMG A45 421ch"],
+    "Classe C": ["C180 170ch", "C200 204ch", "C300 258ch", "C220d 200ch", "C300d 265ch", "C43 AMG 408ch", "C63 AMG 680ch"],
+    "Classe E": ["E200 204ch", "E300 258ch", "E220d 197ch", "E300d 286ch", "E53 AMG 435ch", "E63 AMG 612ch"],
+    "Classe S": ["S350d 286ch", "S450d 367ch", "S500 435ch", "S580 503ch", "S63 AMG 612ch", "Maybach S680 612ch"],
+    "GLC": ["GLC200 204ch", "GLC300 258ch", "GLC220d 197ch", "GLC300d 269ch", "GLC43 AMG 390ch", "GLC63 AMG 510ch"],
+    "GLE": ["GLE350d 272ch", "GLE400d 330ch", "GLE450 381ch", "GLE53 AMG 435ch", "GLE63 AMG 612ch"],
+    "GLA": ["GLA180 136ch", "GLA200 163ch", "GLA250 224ch", "GLA200d 150ch", "AMG GLA35 306ch", "AMG GLA45 421ch"],
+    "GLB": ["GLB180 136ch", "GLB200 163ch", "GLB250 224ch", "GLB200d 150ch", "GLB220d 190ch", "AMG GLB35 306ch"],
+    "EQA": ["EQA 250 190ch", "EQA 300 228ch", "EQA 350 292ch"],
+    "EQC": ["EQC 400 408ch"],
+    "EQE": ["EQE 300 245ch", "EQE 350 292ch", "EQE 500 408ch", "AMG EQE 53 626ch"],
+    "EQS": ["EQS 450+ 360ch", "EQS 580 544ch", "AMG EQS 53 658ch"],
+    "Classe G": ["G350d 286ch", "G500 421ch", "G63 AMG 585ch"]
+  },
+  "MG": {
+    "MG4": ["Electric 170ch", "Electric 204ch", "Electric 245ch", "XPower 435ch"],
+    "MG ZS": ["1.5 VTi 106ch", "1.0 T-GDi 111ch", "EV 177ch"],
+    "MG HS": ["1.5 T-GDi 162ch", "2.0 T-GDi 231ch", "Plug-in Hybrid 258ch"],
+    "MG5": ["Electric 156ch", "Electric 204ch"],
+    "MG3": ["1.5 VTi 106ch", "Hybrid 195ch"]
+  },
+  "Mini": {
+    "Cooper": ["Cooper 136ch", "Cooper S 178ch", "JCW 231ch", "Electric 184ch"],
+    "Countryman": ["Cooper 136ch", "Cooper S 178ch", "JCW 306ch", "Cooper SE All4 313ch"],
+    "Clubman": ["Cooper 136ch", "Cooper S 178ch", "JCW 272ch"]
+  },
+  "Nissan": {
+    "Qashqai": ["1.3 DIG-T 140ch", "1.3 DIG-T 158ch", "e-Power 190ch", "1.5 dCi 116ch"],
+    "Juke": ["1.0 DIG-T 114ch", "1.6 DIG-T 150ch", "Nismo 200ch", "Hybrid 143ch"],
+    "X-Trail": ["1.5 Variable Compression 163ch", "e-Power 213ch", "Plug-in Hybrid 236ch"],
+    "Micra": ["1.0 IG-T 65ch", "1.0 IG-T 100ch", "1.5 dCi 95ch"],
+    "Navara": ["2.3 dCi 160ch", "2.3 dCi 190ch"],
+    "Ariya": ["Electric 218ch", "Electric 242ch", "Electric 306ch 4x4"],
+    "Patrol": ["4.0 V6 275ch", "5.6 V8 400ch"],
+    "Leaf": ["Electric 110ch", "Electric 150ch", "e+ 217ch"]
+  },
+  "Opel": {
+    "Corsa": ["1.2 75ch", "1.2 Turbo 100ch", "1.2 Turbo 130ch", "1.5 Diesel 100ch", "Corsa-e 136ch"],
+    "Astra": ["1.2 Turbo 110ch", "1.2 Turbo 130ch", "1.5 Diesel 130ch", "Plug-in Hybrid 180ch", "Astra-e 156ch"],
+    "Mokka": ["1.2 Turbo 100ch", "1.2 Turbo 130ch", "1.5 Diesel 110ch", "Mokka-e 136ch"],
+    "Grandland": ["1.2 Turbo 130ch", "1.5 Diesel 130ch", "Plug-in Hybrid 300ch"],
+    "Combo": ["1.2 Turbo 110ch", "1.5 Diesel 100ch", "1.5 Diesel 130ch", "Combo-e 136ch"],
+    "Vivaro": ["1.5 Diesel 120ch", "2.0 Diesel 145ch", "2.0 Diesel 180ch", "Vivaro-e 136ch"]
+  },
+  "Peugeot": {
+    "208": ["PureTech 75ch", "PureTech 100ch", "PureTech 130ch", "BlueHDi 100ch", "e-208 136ch"],
+    "308": ["PureTech 110ch", "PureTech 130ch", "BlueHDi 130ch", "Plug-in Hybrid 180ch", "Plug-in Hybrid 225ch", "e-308 156ch"],
+    "2008": ["PureTech 100ch", "PureTech 130ch", "BlueHDi 110ch", "e-2008 136ch"],
+    "3008": ["PureTech 130ch", "PureTech 180ch", "BlueHDi 130ch", "Plug-in Hybrid 225ch", "Plug-in Hybrid 300ch"],
+    "5008": ["PureTech 130ch", "PureTech 180ch", "BlueHDi 130ch", "Plug-in Hybrid 225ch"],
+    "508": ["PureTech 130ch", "PureTech 180ch", "PureTech 225ch", "BlueHDi 130ch", "Plug-in Hybrid 225ch"],
+    "Partner": ["PureTech 110ch", "BlueHDi 100ch", "BlueHDi 130ch", "e-Partner 136ch"],
+    "Expert": ["BlueHDi 120ch", "BlueHDi 145ch", "BlueHDi 180ch", "e-Expert 136ch"],
+    "Rifter": ["PureTech 110ch", "PureTech 130ch", "BlueHDi 100ch", "BlueHDi 130ch", "e-Rifter 136ch"]
+  },
+  "Porsche": {
+    "911": ["Carrera 385ch", "Carrera S 450ch", "Carrera 4S 450ch", "Turbo 580ch", "Turbo S 650ch", "GT3 510ch", "GT3 RS 525ch"],
+    "Cayenne": ["Cayenne 353ch", "Cayenne S 474ch", "Cayenne Turbo 550ch", "Cayenne Turbo GT 660ch", "Cayenne E-Hybrid 470ch"],
+    "Macan": ["Macan 265ch", "Macan S 380ch", "Macan GTS 440ch", "Macan Turbo 440ch", "Macan Electric 360ch"],
+    "Panamera": ["Panamera 353ch", "Panamera 4 353ch", "Panamera Turbo 630ch", "Panamera E-Hybrid 470ch"],
+    "Taycan": ["Taycan 408ch", "Taycan 4S 530ch", "Taycan Turbo 680ch", "Taycan Turbo S 761ch", "Taycan Cross Turismo"],
+    "718 Cayman": ["Cayman 300ch", "Cayman S 350ch", "Cayman GTS 400ch", "Cayman GT4 420ch"],
+    "718 Boxster": ["Boxster 300ch", "Boxster S 350ch", "Boxster GTS 400ch", "Boxster Spyder 420ch"]
+  },
+  "Renault": {
+    "Clio": ["SCe 65ch", "TCe 90ch", "TCe 100ch", "TCe 130ch EDC", "Blue dCi 85ch", "Blue dCi 100ch", "E-Tech Hybrid 140ch", "RS Line"],
+    "Captur": ["TCe 90ch", "TCe 120ch", "TCe 155ch EDC", "Blue dCi 95ch", "Blue dCi 115ch", "E-Tech Hybrid 145ch", "E-Tech Plug-in 160ch"],
+    "Mégane": ["TCe 100ch", "TCe 140ch", "TCe 160ch", "Blue dCi 95ch", "Blue dCi 115ch", "E-Tech Hybrid 160ch", "Mégane E-Tech 130ch", "Mégane E-Tech 220ch", "RS 300ch"],
+    "Arkana": ["TCe 140ch", "TCe 160ch EDC", "E-Tech Hybrid 145ch"],
+    "Austral": ["TCe 130ch", "TCe 160ch", "E-Tech Hybrid 160ch", "E-Tech Hybrid 200ch"],
+    "Scénic": ["TCe 140ch", "Blue dCi 95ch", "Blue dCi 115ch", "E-Tech Hybrid 160ch", "Scénic E-Tech 170ch", "Scénic E-Tech 220ch"],
+    "Talisman": ["TCe 150ch", "TCe 200ch EDC", "Blue dCi 110ch", "Blue dCi 130ch", "Blue dCi 160ch"],
+    "Kangoo": ["TCe 130ch", "Blue dCi 75ch", "Blue dCi 95ch", "Blue dCi 115ch", "Kangoo E-Tech 120ch"],
+    "Master": ["Blue dCi 115ch", "Blue dCi 145ch", "Blue dCi 170ch", "Master E-Tech 76ch"],
+    "Trafic": ["Blue dCi 110ch", "Blue dCi 145ch", "Blue dCi 170ch"],
+    "Zoe": ["R110 108ch", "R135 135ch"],
+    "Alpine A110": ["A110 252ch", "A110 S 300ch", "A110 R 300ch"],
+    "5 E-Tech": ["Electric 95ch", "Electric 120ch", "Electric 150ch"]
+  },
+  "SEAT": {
+    "Ibiza": ["1.0 TSI 95ch", "1.0 TSI 110ch", "1.5 TSI 150ch", "1.6 TDI 95ch"],
+    "Leon": ["1.0 TSI 110ch", "1.5 TSI 150ch", "2.0 TSI 190ch", "1.6 TDI 115ch", "2.0 TDI 150ch", "Cupra 300ch"],
+    "Arona": ["1.0 TSI 95ch", "1.0 TSI 110ch", "1.6 TDI 95ch"],
+    "Ateca": ["1.0 TSI 110ch", "1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch"],
+    "Tarraco": ["1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch", "2.0 TDI 200ch"]
+  },
+  "Škoda": {
+    "Octavia": ["1.0 TSI 110ch", "1.5 TSI 150ch", "2.0 TSI 190ch", "1.6 TDI 115ch", "2.0 TDI 150ch", "RS 245ch"],
+    "Fabia": ["1.0 MPI 65ch", "1.0 TSI 95ch", "1.0 TSI 110ch", "1.5 TSI 150ch"],
+    "Kamiq": ["1.0 TSI 95ch", "1.0 TSI 110ch", "1.5 TSI 150ch", "1.6 TDI 115ch"],
+    "Karoq": ["1.0 TSI 110ch", "1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch"],
+    "Kodiaq": ["1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch", "2.0 TDI 200ch", "RS 245ch"],
+    "Superb": ["1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch", "2.0 TDI 200ch"],
+    "Scala": ["1.0 TSI 95ch", "1.0 TSI 110ch", "1.5 TSI 150ch", "1.6 TDI 115ch"],
+    "Enyaq": ["Enyaq 60 180ch", "Enyaq 80 204ch", "Enyaq 80x 265ch", "Enyaq Coupé 60 180ch", "Enyaq Coupé RS 299ch"]
+  },
+  "Suzuki": {
+    "Swift": ["1.2 DualJet 83ch", "1.0 Boosterjet 111ch", "1.2 Hybrid 83ch"],
+    "Vitara": ["1.4 Boosterjet 129ch", "1.6 VVT 120ch", "1.6 DDIS 120ch", "Hybrid 129ch"],
+    "S-Cross": ["1.4 Boosterjet 129ch", "1.6 DDIS 120ch", "Hybrid 129ch"],
+    "Jimny": ["1.5 VVT 102ch", "LCV 102ch"],
+    "Ignis": ["1.2 DualJet 83ch", "1.2 Hybrid 90ch"]
+  },
+  "Tesla": {
+    "Model 3": ["Propulsion 283ch", "Grande Autonomie 498ch", "Performance 510ch"],
+    "Model Y": ["Propulsion 299ch", "Grande Autonomie 514ch", "Performance 534ch"],
+    "Model S": ["Grande Autonomie 670ch", "Plaid 1020ch"],
+    "Model X": ["Grande Autonomie 670ch", "Plaid 1020ch"]
+  },
+  "Toyota": {
+    "Yaris": ["1.0 VVT-i 72ch", "1.5 VVT-i 111ch", "1.5 Hybrid 116ch", "GR Yaris 261ch"],
+    "Corolla": ["1.2 Turbo 116ch", "1.8 Hybrid 140ch", "2.0 Hybrid 196ch", "GR Corolla 304ch"],
+    "RAV4": ["2.0 VVT-i 173ch", "2.5 Hybrid 218ch", "2.5 Plug-in Hybrid 306ch", "2.5 AWD-i 222ch"],
+    "C-HR": ["1.2 Turbo 116ch", "1.8 Hybrid 122ch", "2.0 Hybrid 184ch", "Plug-in Hybrid 223ch"],
+    "Hilux": ["2.4 D-4D 150ch", "2.8 D-4D 204ch", "2.8 D-4D 224ch"],
+    "Land Cruiser": ["2.8 D-4D 204ch", "3.3 V6 D-4D 306ch", "3.5 V6 409ch"],
+    "Aygo": ["1.0 VVT-i 72ch", "Aygo X 72ch"],
+    "Camry": ["2.5 Hybrid 218ch"],
+    "Supra": ["2.0 Turbo 258ch", "3.0 Turbo 340ch", "GRMN 435ch"],
+    "Proace": ["1.5 D-4D 120ch", "2.0 D-4D 145ch", "2.0 D-4D 180ch", "Proace Electric 136ch"],
+    "Proace City": ["1.5 D-4D 100ch", "1.5 D-4D 130ch", "Proace City Electric 136ch"],
+    "bZ4X": ["Electric 204ch", "Electric 218ch 4x4"]
+  },
+  "Volkswagen": {
+    "Golf": ["1.0 TSI 110ch", "1.5 TSI 150ch", "2.0 TSI 190ch", "1.6 TDI 115ch", "2.0 TDI 150ch", "eHybrid 204ch", "GTE 245ch", "GTI 245ch", "GTI Clubsport 300ch", "R 320ch", "R Variant 320ch"],
+    "Polo": ["1.0 MPI 80ch", "1.0 TSI 95ch", "1.0 TSI 110ch", "2.0 TSI 200ch", "GTI 207ch"],
+    "T-Cross": ["1.0 TSI 95ch", "1.0 TSI 110ch", "1.5 TSI 150ch", "1.6 TDI 95ch"],
+    "T-Roc": ["1.0 TSI 110ch", "1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch", "R 300ch"],
+    "Tiguan": ["1.5 TSI 130ch", "1.5 TSI 150ch", "2.0 TSI 190ch", "2.0 TDI 150ch", "2.0 TDI 200ch", "eHybrid 245ch", "R 320ch"],
+    "Touareg": ["3.0 TDI 231ch", "3.0 TDI 286ch", "3.0 V6 340ch", "4.0 V8 421ch", "R 462ch"],
+    "Passat": ["1.5 TSI 150ch", "2.0 TSI 190ch", "1.6 TDI 120ch", "2.0 TDI 150ch", "2.0 TDI 200ch"],
+    "ID.3": ["Pro 150ch", "Pro 204ch", "Pro S 231ch", "GTX 326ch"],
+    "ID.4": ["Pro 150ch", "Pro 204ch", "Pro 4Motion 299ch", "GTX 326ch"],
+    "ID.5": ["Pro 174ch", "Pro 204ch", "GTX 326ch"],
+    "ID.Buzz": ["Pro 150ch", "Pro 204ch", "GTX 340ch"],
+    "Amarok": ["2.0 TDI 150ch", "2.0 TDI 180ch", "3.0 V6 TDI 241ch", "3.0 V6 TDI 258ch"],
+    "Caddy": ["1.5 TSI 114ch", "2.0 TDI 102ch", "2.0 TDI 122ch", "Caddy e-Hybrid"],
+    "Multivan": ["1.5 TSI 136ch", "2.0 TSI 204ch", "2.0 TDI 150ch", "eHybrid 218ch"],
+    "Transporter": ["2.0 TDI 90ch", "2.0 TDI 110ch", "2.0 TDI 150ch", "2.0 TDI 199ch"],
+    "Taigo": ["1.0 TSI 95ch", "1.0 TSI 110ch", "1.5 TSI 150ch"]
+  },
+  "Volvo": {
+    "XC40": ["T2 129ch", "T3 163ch", "T4 197ch", "B3 163ch", "B4 197ch", "Recharge 231ch", "Recharge 408ch"],
+    "XC60": ["B4 197ch", "B5 250ch", "B6 300ch", "T6 Recharge 350ch", "T8 Recharge 455ch"],
+    "XC90": ["B5 250ch", "B6 300ch", "T8 Recharge 455ch"],
+    "S60": ["B3 163ch", "B4 197ch", "T8 Recharge 455ch"],
+    "S90": ["B4 197ch", "B5 250ch", "T8 Recharge 455ch"],
+    "V60": ["B3 163ch", "B4 197ch", "B5 250ch", "T6 Recharge 350ch", "T8 Recharge 455ch"],
+    "V90": ["B4 197ch", "B5 250ch", "B6 300ch"],
+    "C40": ["Recharge 231ch", "Recharge 408ch"],
+    "EX30": ["Single Motor 272ch", "Single Motor Extended 272ch", "Twin Motor 428ch"],
+    "EX90": ["Twin Motor 408ch", "Twin Motor Performance 517ch"]
+  }
+}

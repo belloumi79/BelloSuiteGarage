@@ -6,24 +6,25 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /**
- * Use the direct database connection instead of Supabase's connection pooler
- * to avoid EMAXCONNSESSION errors (pooler caps at 15 concurrent sessions,
- * exhausted by Vercel serverless concurrency).
+ * Use Supabase's connection pooler with `pool_timeout` so PgBouncer waits up
+ * to 30 seconds for a slot instead of immediately failing with
+ * EMAXCONNSESSION when the 15-session limit is momentarily exhausted by
+ * concurrent Vercel serverless functions.
  *
- * Mapping: pooler host "*.pooler.supabase.com:5432" -> "db.<ref>.supabase.co:5432"
- * Fallback: if DATABASE_URL does not contain a pooler host, use it as-is.
+ * The environment variable DATABASE_URL should be the pooler URL:
+ *   postgresql://postgres.<ref>:<password>@<region>.pooler.supabase.com:5432/postgres
  */
 function resolveDbUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set.');
 
   if (url.includes('pooler.supabase.com')) {
-    const admin = url.split('@')[0] ?? '';
-    const ref = admin.split('.')[1]?.split(':')[0] ?? '';
-    return url.replace(
-      /aws-0-eu-west-1\.pooler\.supabase\.com:5432/,
-      `db.${ref}.supabase.co:5432`,
-    );
+    const sep = url.includes('?') ? '&' : '?';
+    const params: string[] = [];
+    if (!url.includes('pgbouncer=')) params.push('pgbouncer=true');
+    if (!url.includes('connection_limit=')) params.push('connection_limit=1');
+    if (!url.includes('pool_timeout=')) params.push('pool_timeout=30');
+    return params.length > 0 ? `${url}${sep}${params.join('&')}` : url;
   }
   return url;
 }

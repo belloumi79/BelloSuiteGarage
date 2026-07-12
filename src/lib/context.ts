@@ -48,7 +48,9 @@ export async function getCurrentGarage() {
 
         return { user, garage: membership.garages };
     } catch (err) {
-        console.error('[getCurrentGarage] Error:', err);
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[getCurrentGarage] Error:', msg);
+        console.error('[getCurrentGarage] DATABASE_URL (suffix):', (process.env.DATABASE_URL ?? '').slice(-60));
         return null;
     }
 }

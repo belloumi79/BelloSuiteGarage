@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getErrorMessage } from '@/lib/errors';
 import { getCurrentGarage } from '@/lib/context';
-import { aiChat } from '@/lib/ai';
+import { aiChatWithRetry } from '@/lib/ai';
 import { SYSTEM_PROMPTS } from '@/lib/ai/prompts';
 import { prisma } from '@/lib/prisma';
 
@@ -23,20 +23,22 @@ export async function POST(request: Request) {
       { role: 'user' as const, content: message },
     ];
 
-    if (message.toLowerCase().includes('recherche') || message.toLowerCase().includes('cherche') || message.toLowerCase().includes('trouve')) {
-      const searchResult = await handleSearchQuery(message, ctx.garage.id);
-      if (searchResult) {
-        messages.push({
-          role: 'system' as const,
-          content: `Voici les données trouvées en base pour répondre à la question:\n${JSON.stringify(searchResult, null, 2)}\n\nRéponds à l'utilisateur en français avec ces informations.`,
-        });
-      }
+    const searchResult = await handleSearchQuery(message, ctx.garage.id);
+    if (searchResult) {
+      messages.push({
+        role: 'system' as const,
+        content: `Voici les données trouvées en base pour répondre à la question:\n${JSON.stringify(searchResult, null, 2)}\n\nRéponds à l'utilisateur en français avec ces informations.`,
+      });
     }
 
-    const reply = await aiChat(messages);
+    const reply = await aiChatWithRetry(messages);
     return NextResponse.json({ reply });
   } catch (err: unknown) {
-    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
+    const msg = getErrorMessage(err);
+    if (msg.includes('clé API') || msg.includes('GROQ_API_KEY')) {
+      return NextResponse.json({ error: msg }, { status: 503 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

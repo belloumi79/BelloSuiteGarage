@@ -208,7 +208,7 @@ export default function DashboardPage() {
                     return (
                       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                         {appts.map((apt: Appointment) => {
-                          const clientName = apt.clients?.company_name || `${apt.clients?.first_name} ${apt.clients?.last_name}`;
+                          const clientName = apt.clients?.company_name || `${apt.clients?.first_name || ''} ${apt.clients?.last_name || ''}`.trim() || 'Client';
                           return (
                             <div key={apt.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between hover:border-slate-700 transition">
                               <div>

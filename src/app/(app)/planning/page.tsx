@@ -153,7 +153,7 @@ export default function PlanningPage() {
               ) : (
                 agenda.map(event => {
                   const clientName = event.clients
-                    ? event.clients.company_name || `${event.clients.first_name} ${event.clients.last_name}`
+                    ? event.clients.company_name || `${event.clients.first_name || ''} ${event.clients.last_name || ''}`.trim()
                     : 'Aucun client lié';
                   const vehicleLabel = event.vehicles ? `${event.vehicles.make} ${event.vehicles.model} (${event.vehicles.plate})` : 'Aucun véhicule lié';
 
@@ -253,7 +253,7 @@ export default function PlanningPage() {
                   >
                     <option value="">-- Aucun --</option>
                     {clients.map(c => {
-                      const name = c.company_name || `${c.first_name} ${c.last_name}`;
+                      const name = c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim();
                       return <option key={c.id} value={c.id}>{name}</option>;
                     })}
                   </select>

@@ -193,7 +193,7 @@ export default function VehiclesPage() {
               })
               .map(vehicle => {
                 const clientName = vehicle.clients
-                  ? vehicle.clients.company_name || `${vehicle.clients.first_name} ${vehicle.clients.last_name}`
+                    ? vehicle.clients.company_name || `${vehicle.clients.first_name || ''} ${vehicle.clients.last_name || ''}`.trim()
                   : 'Propriétaire inconnu';
 
                 return (
@@ -285,7 +285,7 @@ export default function VehiclesPage() {
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
                 >
                   {clients.map(c => {
-                    const name = c.company_name || `${c.first_name} ${c.last_name}`;
+                    const name = c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim();
                     return <option key={c.id} value={c.id}>{name}</option>;
                   })}
                 </select>

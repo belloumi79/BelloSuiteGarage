@@ -314,7 +314,7 @@ export default function DocumentsPage() {
     csvContent += 'N° Facture,Date,Client,Total TTC,Montant Payé,Statut\n';
 
     paidDocs.forEach(d => {
-      const clientName = d.clients?.company_name || `${d.clients?.first_name || ''} ${d.clients?.last_name || ''}`.trim();
+      const clientName = d.clients?.company_name || `${d.clients?.first_name || ''} ${d.clients?.last_name || ''}`.trim() || 'Client';
       csvContent += `${d.number},${d.issue_date.split('T')[0]},"${clientName}",${Number(d.total_ttc).toFixed(2)},${Number(d.amount_paid).toFixed(2)},${d.status}\n`;
     });
 
@@ -364,7 +364,7 @@ export default function DocumentsPage() {
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div className="border border-gray-200 p-4 rounded">
               <h3 className="font-semibold text-gray-600 text-xs uppercase mb-2">Destinataire / Client</h3>
-              <p className="font-bold">{selectedDoc.clients?.company_name || `${selectedDoc.clients?.first_name} ${selectedDoc.clients?.last_name}`}</p>
+              <p className="font-bold">{selectedDoc.clients?.company_name || `${selectedDoc.clients?.first_name || ''} ${selectedDoc.clients?.last_name || ''}`.trim()}</p>
               <p>{selectedDoc.clients?.address_line1}</p>
               <p>{selectedDoc.clients?.postal_code} {selectedDoc.clients?.city}</p>
               <p>Tél : {selectedDoc.clients?.phone}</p>
@@ -528,14 +528,14 @@ export default function DocumentsPage() {
             {documents
               .filter(d => {
                 const searchLower = debouncedSearch.toLowerCase();
-                const clientName = d.clients ? (d.clients.company_name || `${d.clients.first_name} ${d.clients.last_name}`).toLowerCase() : '';
+                const clientName = d.clients ? (d.clients.company_name || `${d.clients.first_name || ''} ${d.clients.last_name || ''}`.trim() || 'client').toLowerCase() : '';
                 const plate = d.vehicles ? (d.vehicles.plate || '').toLowerCase() : '';
                 const matchesSearch = d.number.toLowerCase().includes(searchLower) || clientName.includes(searchLower) || plate.includes(searchLower);
                 const matchesType = docFilter === 'all' || d.type === docFilter;
                 return matchesSearch && matchesType;
               })
               .map(doc => {
-                const clientName = doc.clients?.company_name || `${doc.clients?.first_name || ''} ${doc.clients?.last_name || ''}`.trim();
+                const clientName = doc.clients?.company_name || `${doc.clients?.first_name || ''} ${doc.clients?.last_name || ''}`.trim() || 'Client';
                 const typeLabel = doc.type === 'quote' ? 'Devis' : doc.type === 'repair_order' ? 'Ordre de Rép. (O.R.)' : 'Facture';
 
                 return (
@@ -707,7 +707,7 @@ export default function DocumentsPage() {
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none disabled:opacity-50"
                     >
                       {clients.map(c => {
-                        const name = c.company_name || `${c.first_name} ${c.last_name}`;
+                        const name = c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Client';
                         return <option key={c.id} value={c.id}>{name}</option>;
                       })}
                     </select>

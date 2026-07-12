@@ -184,13 +184,13 @@ export default function ClientsPage() {
               <tbody>
                 {clients
                   .filter(c => {
-                    const name = c.company_name || `${c.first_name} ${c.last_name}`;
+                    const name = c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Client';
                     return name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (c.phone && c.phone.includes(debouncedSearch));
                   })
                   .map(client => {
                     const displayName = client.company_name
                       ? `${client.company_name} (Soc.)`
-                      : `${client.civility} ${client.first_name} ${client.last_name}`;
+                      : `${client.civility || ''} ${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client sans nom';
                     return (
                       <tr key={client.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition">
                         <td className="p-4 font-semibold text-slate-200">{displayName}</td>

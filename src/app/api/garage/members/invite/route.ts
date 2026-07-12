@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     const memberRole = role || 'mechanic';
 
-    const invitedUser = await prisma.users.findUnique({ where: { email } });
+    const invitedUser = await prisma.users.findFirst({ where: { email } });
     if (!invitedUser) {
       return NextResponse.json({ error: 'Utilisateur introuvable. La personne doit d\'abord créer un compte.' }, { status: 404 });
     }

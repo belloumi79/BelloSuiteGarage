@@ -42,7 +42,11 @@ async function geminiCompletion(messages: Message[]): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-async function groqCompletion(messages: Message[]): Promise<string> {
+const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'gemma2-9b-it'];
+
+async function groqCompletion(messages: Message[], modelIdx = 0): Promise<string> {
+  if (modelIdx >= GROQ_MODELS.length) throw new Error('Aucun modèle Groq disponible');
+
   const res = await fetch(GROQ_URL, {
     method: 'POST',
     headers: {
@@ -50,7 +54,7 @@ async function groqCompletion(messages: Message[]): Promise<string> {
       'Authorization': `Bearer ${GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama3-70b-8192',
+      model: GROQ_MODELS[modelIdx],
       messages,
       temperature: 0.3,
       max_tokens: 4096,
@@ -60,6 +64,9 @@ async function groqCompletion(messages: Message[]): Promise<string> {
   if (!res.ok) {
     const text = await res.text();
     if (res.status === 429) throw new QuotaError('Groq');
+    if (res.status === 400) {
+      return groqCompletion(messages, modelIdx + 1);
+    }
     throw new Error(`Groq API error ${res.status}: ${text}`);
   }
 
@@ -70,9 +77,16 @@ async function groqCompletion(messages: Message[]): Promise<string> {
 class QuotaError extends Error {
   provider: string;
   constructor(provider: string) {
-    super(`Quota dépassé pour ${provider}`);
+    super(`Le service ${provider} a atteint son quota. Réessayez dans quelques instants.`);
     this.provider = provider;
     this.name = 'QuotaError';
+  }
+}
+
+class ModelError extends Error {
+  constructor(detail: string) {
+    super(`Modèle IA temporairement indisponible.`);
+    this.name = 'ModelError';
   }
 }
 

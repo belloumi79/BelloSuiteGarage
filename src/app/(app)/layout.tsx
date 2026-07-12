@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Wrench } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
 import Sidebar from './Sidebar';
 import ClientLayout from './ClientLayout';
 
@@ -25,10 +26,21 @@ export default async function AppLayout({
     }
   }
 
+  let isSuperAdmin = false;
+  if (ctx) {
+    try {
+      const dbUser = await prisma.users.findUnique({
+        where: { id: ctx.user.id },
+        select: { is_super_admin: true },
+      });
+      isSuperAdmin = dbUser?.is_super_admin ?? false;
+    } catch {}
+  }
+
   if (ctx) {
     return (
       <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
-        <Sidebar />
+        <Sidebar isSuperAdmin={isSuperAdmin} />
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-950 relative">
           <ClientLayout>{children}</ClientLayout>
         </main>

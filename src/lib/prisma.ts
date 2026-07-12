@@ -37,6 +37,24 @@ function resolveDbUrl(): string {
   return url;
 }
 
+const ENUM_CASTS = ['document_status', 'payment_method'] as const;
+
+async function ensureEnumCasts(client: PrismaClient) {
+  for (const tgt of ENUM_CASTS) {
+    try {
+      const [{ exists }] = await client.$queryRawUnsafe<[{ exists: boolean }]>(
+        `SELECT EXISTS (SELECT 1 FROM pg_cast WHERE castsource = 'text'::regtype AND casttarget = $1::regtype) AS exists`,
+        tgt,
+      );
+      if (!exists) {
+        await client.$executeRawUnsafe(`CREATE CAST (text AS "${tgt}") WITH INOUT AS IMPLICIT`);
+      }
+    } catch {
+      /* type may not exist as an enum — ignore */
+    }
+  }
+}
+
 function getClient(): PrismaClient {
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
 
@@ -46,6 +64,8 @@ function getClient(): PrismaClient {
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
+
+  ensureEnumCasts(globalForPrisma.prisma).catch(() => {});
 
   return globalForPrisma.prisma;
 }

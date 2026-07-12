@@ -18,7 +18,8 @@ function resolveDbUrl(): string {
   if (!url) throw new Error('DATABASE_URL is not set.');
 
   if (url.includes('pooler.supabase.com')) {
-    const ref = url.replace(/^postgresql:\/\/[^.]+\.([^.]+)\..+$/, '$1');
+    const admin = url.split('@')[0] ?? '';
+    const ref = admin.split('.')[1]?.split(':')[0] ?? '';
     return url.replace(
       /aws-0-eu-west-1\.pooler\.supabase\.com:5432/,
       `db.${ref}.supabase.co:5432`,

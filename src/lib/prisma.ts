@@ -6,17 +6,23 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /**
- * Supabase's connection pooler (pooler.supabase.com, transaction mode) does
- * not support Prisma's prepared statements and can exhaust its connection
- * limit under serverless concurrency. Appending `pgbouncer=true` makes Prisma
- * avoid prepared statements, and `connection_limit=1` caps the pool per
- * lambda. Without these, requests fail intermittently with 500/401 on Vercel.
- * The params are harmless on a direct connection and on local dev.
+ * Use the direct database connection instead of Supabase's connection pooler
+ * to avoid EMAXCONNSESSION errors (pooler caps at 15 concurrent sessions,
+ * exhausted by Vercel serverless concurrency).
+ *
+ * Mapping: pooler host "*.pooler.supabase.com:5432" -> "db.<ref>.supabase.co:5432"
+ * Fallback: if DATABASE_URL does not contain a pooler host, use it as-is.
  */
-function normalizeDbUrl(url: string): string {
-  if (url.includes('pooler.supabase.com') && !url.includes('pgbouncer=')) {
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}pgbouncer=true&connection_limit=1`;
+function resolveDbUrl(): string {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL is not set.');
+
+  if (url.includes('pooler.supabase.com')) {
+    const ref = url.replace(/^postgresql:\/\/[^.]+\.([^.]+)\..+$/, '$1');
+    return url.replace(
+      /aws-0-eu-west-1\.pooler\.supabase\.com:5432/,
+      `db.${ref}.supabase.co:5432`,
+    );
   }
   return url;
 }
@@ -24,12 +30,7 @@ function normalizeDbUrl(url: string): string {
 function getClient(): PrismaClient {
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
 
-  const rawUrl = process.env.DATABASE_URL;
-  if (!rawUrl) {
-    throw new Error('DATABASE_URL is not set.');
-  }
-
-  const dbUrl = normalizeDbUrl(rawUrl);
+  const dbUrl = resolveDbUrl();
   const adapter = new PrismaPg({ connectionString: dbUrl });
   globalForPrisma.prisma = new PrismaClient({
     adapter,

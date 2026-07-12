@@ -6,25 +6,33 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /**
- * Use Supabase's connection pooler with `pool_timeout` so PgBouncer waits up
- * to 30 seconds for a slot instead of immediately failing with
- * EMAXCONNSESSION when the 15-session limit is momentarily exhausted by
- * concurrent Vercel serverless functions.
+ * Switch the pooler from session-mode (port 5432) to transaction-mode
+ * (port 6543) so PgBouncer returns connections to the pool after each
+ * transaction instead of pinning them per session.  This avoids
+ * EMAXCONNSESSION errors when concurrent Vercel serverless functions
+ * exhaust the pooler's 15-session limit.
  *
- * The environment variable DATABASE_URL should be the pooler URL:
+ * With transaction mode, N concurrent functions can share the same
+ * 15-connection pool as long as they don't hold long-running transactions.
+ *
+ * The environment variable DATABASE_URL should be the session-mode URL:
  *   postgresql://postgres.<ref>:<password>@<region>.pooler.supabase.com:5432/postgres
+ *
+ * Prisma is configured with `pgbouncer=true` (simple-query protocol) which
+ * is required for PgBouncer compatibility.
  */
 function resolveDbUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set.');
 
   if (url.includes('pooler.supabase.com')) {
-    const sep = url.includes('?') ? '&' : '?';
+    const txUrl = url.replace(':5432/', ':6543/');
+    const sep = txUrl.includes('?') ? '&' : '?';
     const params: string[] = [];
-    if (!url.includes('pgbouncer=')) params.push('pgbouncer=true');
-    if (!url.includes('connection_limit=')) params.push('connection_limit=1');
-    if (!url.includes('pool_timeout=')) params.push('pool_timeout=30');
-    return params.length > 0 ? `${url}${sep}${params.join('&')}` : url;
+    if (!txUrl.includes('pgbouncer=')) params.push('pgbouncer=true');
+    if (!txUrl.includes('connection_limit=')) params.push('connection_limit=3');
+    if (!txUrl.includes('pool_timeout=')) params.push('pool_timeout=10');
+    return params.length > 0 ? `${txUrl}${sep}${params.join('&')}` : txUrl;
   }
   return url;
 }

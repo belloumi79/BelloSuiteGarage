@@ -702,6 +702,14 @@ model garages {
   next_quote_number   Int?               @default(1)
   next_order_number   Int?               @default(1)
   invoice_footer      String?
+  subscription_plan   String?            @default("monthly")
+  subscription_status String?            @default("trial")
+  trial_started_at    DateTime?          @default(now()) @db.Timestamptz(6)
+  trial_end_date      DateTime?          @db.Date
+  subscription_started_at DateTime?       @db.Timestamptz(6)
+  subscription_renewal_date DateTime?     @db.Date
+  activation_code     String?
+  suspended_at        DateTime?          @db.Timestamptz(6)
   created_at          DateTime           @default(now()) @db.Timestamptz(6)
   updated_at          DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
   agenda_events       agenda_events[]

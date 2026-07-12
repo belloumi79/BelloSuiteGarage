@@ -12,6 +12,8 @@ import {
   Calendar,
   Settings,
   LogOut,
+  UserCog,
+  Shield,
 } from 'lucide-react';
 
 const navItems = [
@@ -79,6 +81,28 @@ export default function Sidebar() {
       </div>
 
       <div className="p-4 border-t border-slate-800/60 space-y-1">
+        <Link
+          href="/admin"
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+            isActive('/admin')
+              ? 'bg-amber-600/10 text-amber-400 border border-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <Shield className="w-4 h-4" />
+          Administration
+        </Link>
+        <Link
+          href="/settings/members"
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+            isActive('/settings/members')
+              ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+              : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <UserCog className="w-4 h-4" />
+          Membres
+        </Link>
         <Link
           href="/settings"
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${

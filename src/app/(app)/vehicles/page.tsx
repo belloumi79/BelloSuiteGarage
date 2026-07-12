@@ -32,6 +32,7 @@ export default function VehiclesPage() {
   const [vehicleForm, setVehicleForm] = useState({
     client_id: '',
     plate: '',
+    vin: '',
     make: '',
     model: '',
     version: '',
@@ -82,6 +83,7 @@ export default function VehiclesPage() {
     setVehicleForm({
       client_id: clients[0]?.id || '',
       plate: '',
+      vin: '',
       make: '',
       model: '',
       version: '',
@@ -216,6 +218,10 @@ export default function VehiclesPage() {
                         <span className="text-slate-500">Marque / Modèle :</span>
                         <span className="text-slate-200 font-bold">{vehicle.make} {vehicle.model}</span>
                       </div>
+                      <div className="flex justify-between text-xs items-center">
+                        <span className="text-slate-500">VIN :</span>
+                        <span className="text-slate-200 font-mono text-[11px]">{vehicle.vin || '—'}</span>
+                      </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-slate-500">Kilométrage :</span>
                         <span className="text-slate-200 font-mono">{Number(vehicle.mileage || 0).toLocaleString('fr-TN')} Km</span>
@@ -227,12 +233,23 @@ export default function VehiclesPage() {
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/60">
+                      <a
+                        href={`https://7zap.com/en/?vin=${vehicle.vin || ''}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 rounded-lg text-emerald-400 transition text-xs flex items-center gap-1.5"
+                        title="Rechercher les pièces sur 7zap"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        7zap
+                      </a>
                       <button
                         onClick={() => {
                           setEditingVehicle(vehicle);
                           setVehicleForm({
                             client_id: vehicle.client_id,
                             plate: vehicle.plate || '',
+                            vin: vehicle.vin || '',
                             make: vehicle.make || '',
                             model: vehicle.model || '',
                             version: vehicle.version || '',
@@ -304,6 +321,20 @@ export default function VehiclesPage() {
                     value={vehicleForm.plate}
                     onChange={(e) => setVehicleForm(prev => ({ ...prev, plate: e.target.value }))}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">
+                    VIN
+                    <span className="text-slate-600 ml-1">(17 caractères)</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={17}
+                    placeholder="e.g. WAUZZZ8V..."
+                    value={vehicleForm.vin}
+                    onChange={(e) => setVehicleForm(prev => ({ ...prev, vin: e.target.value.toUpperCase() }))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none"
                   />
                 </div>
                 <SearchableSelect

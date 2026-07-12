@@ -27,6 +27,9 @@ export async function GET(request: Request) {
                 });
 
                 if (!existingMember) {
+                    const trialEnd = new Date();
+                    trialEnd.setDate(trialEnd.getDate() + 60);
+
                     // Create garage for new user
                     const garage = await prisma.garages.create({
                         data: {
@@ -44,6 +47,10 @@ export async function GET(request: Request) {
                             next_invoice_number: 1,
                             next_quote_number: 1,
                             next_order_number: 1,
+                            subscription_plan: 'monthly',
+                            subscription_status: 'trial',
+                            trial_started_at: new Date(),
+                            trial_end_date: trialEnd,
                         },
                     });
 

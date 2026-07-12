@@ -46,7 +46,7 @@ export async function getCurrentGarage() {
             return null;
         }
 
-        return { user, garage: membership.garages };
+        return { user, garage: membership.garages, role: membership.role };
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error('[getCurrentGarage] Error:', msg);

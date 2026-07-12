@@ -125,4 +125,20 @@ export interface Garage {
   invoice_prefix: string | null;
   quote_prefix: string | null;
   order_prefix: string | null;
+  subscription_plan: string | null;
+  subscription_status: string | null;
+  trial_started_at: string | null;
+  trial_end_date: string | null;
+  subscription_started_at: string | null;
+  subscription_renewal_date: string | null;
+  activation_code: string | null;
+  suspended_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminGarage extends Garage {
+  members_count?: number;
+  owner_email?: string;
+  owner_name?: string;
 }

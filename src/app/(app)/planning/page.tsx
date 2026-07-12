@@ -69,10 +69,15 @@ export default function PlanningPage() {
   const handleAgendaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const body = {
+        ...agendaForm,
+        starts_at: new Date(agendaForm.starts_at).toISOString(),
+        ends_at: new Date(agendaForm.ends_at).toISOString(),
+      };
       const res = await fetch('/api/agenda', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(agendaForm)
+        body: JSON.stringify(body)
       });
       if (res.ok) {
         setIsAgendaModalOpen(false);

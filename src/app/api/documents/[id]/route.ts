@@ -5,6 +5,7 @@ import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
 import { documentUpdateSchema } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
+import { applyStockMovement, registerFreeTextLinesToStock } from '@/lib/stock';
 
 function coerceNumericStrings(value: unknown): unknown {
     if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value)) {
@@ -138,6 +139,19 @@ export async function PUT(
       }
 
       const newDoc = await prisma.$transaction(async tx => {
+        let itemIdByLineId = new Map<string, string>();
+
+        if (targetType === 'repair_order') {
+          const registered = await registerFreeTextLinesToStock(
+            tx,
+            originalDoc.document_lines,
+            originalDoc.id,
+            originalDoc.number,
+            ctx.user?.id
+          );
+          itemIdByLineId = new Map(registered.map(r => [r.lineId, r.itemId]));
+        }
+
         const created = await tx.documents.create({
           data: {
             garage_id: originalDoc.garage_id,
@@ -154,7 +168,7 @@ export async function PUT(
             document_lines: {
               create: originalDoc.document_lines.map(line => ({
                 garage_id: line.garage_id,
-                item_id: line.item_id,
+                item_id: itemIdByLineId.get(line.id) ?? line.item_id,
                 line_type: line.line_type,
                 description: line.description,
                 quantity: line.quantity,
@@ -184,15 +198,14 @@ export async function PUT(
         if (targetType === 'invoice') {
           for (const line of created.document_lines) {
             if (line.item_id && line.line_type === 'part') {
-              await tx.stock_movements.create({
-                data: {
-                  garage_id: originalDoc.garage_id,
-                  item_id: line.item_id,
-                  movement_type: 'sale_out',
-                  quantity: Number(line.quantity),
-                  document_id: created.id,
-                  notes: `Stock sorti suite à conversion Facture N° ${created.number}`,
-                },
+              await applyStockMovement(tx, {
+                garage_id: originalDoc.garage_id,
+                item_id: line.item_id,
+                movement_type: 'sale_out',
+                quantity: Number(line.quantity),
+                document_id: created.id,
+                notes: `Stock sorti suite à conversion Facture N° ${created.number}`,
+                created_by: ctx.user?.id,
               });
             }
           }
@@ -201,7 +214,18 @@ export async function PUT(
         return created;
       });
 
-      return NextResponse.json({ message: 'Document transitioned successfully', document: newDoc });
+      const stockItemsCreated =
+        targetType === 'repair_order'
+          ? originalDoc.document_lines.filter(
+              l => !l.item_id && (l.line_type === 'part' || l.line_type === 'labor')
+            ).length
+          : 0;
+
+      return NextResponse.json({
+        message: 'Document transitioned successfully',
+        document: newDoc,
+        stockItemsCreated,
+      });
     }
 
     // B. Handle regular update (status, notes, and lines)

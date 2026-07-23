@@ -5,6 +5,7 @@ import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
 import { documentCreateSchema } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
+import { applyStockMovement } from '@/lib/stock';
 
 /**
  * Prisma serializes Decimal values as strings in JSON.
@@ -218,15 +219,14 @@ export async function POST(request: Request) {
     if (type === 'invoice') {
       for (const line of document.document_lines) {
         if (line.item_id && line.line_type === 'part') {
-          await prisma.stock_movements.create({
-            data: {
-              garage_id: ctx.garage.id,
-              item_id: line.item_id,
-              movement_type: 'sale_out',
-              quantity: Number(line.quantity),
-              document_id: document.id,
-              notes: `Vente Facture N° ${document.number}`,
-            },
+          await applyStockMovement(prisma, {
+            garage_id: ctx.garage.id,
+            item_id: line.item_id,
+            movement_type: 'sale_out',
+            quantity: Number(line.quantity),
+            document_id: document.id,
+            notes: `Vente Facture N° ${document.number}`,
+            created_by: ctx.user?.id,
           });
         }
       }

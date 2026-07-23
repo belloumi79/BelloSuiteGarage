@@ -85,6 +85,16 @@ export default function DocumentsPage() {
   const [addLineQty, setAddLineQty] = useState(1);
   const [addLineDiscount, setAddLineDiscount] = useState(0);
 
+  const [freeLineForm, setFreeLineForm] = useState({
+    description: '',
+    line_type: 'part' as 'part' | 'labor',
+    quantity: 1,
+    unit: 'pcs',
+    unit_price: 0,
+    discount_percent: 0,
+    vat_rate: 19,
+  });
+
   const [paymentForm, setPaymentForm] = useState({
     document_id: '',
     amount: 0,
@@ -189,6 +199,52 @@ export default function DocumentsPage() {
     setSelectedItemToAdd('');
   };
 
+  const addFreeLineItem = () => {
+    const desc = freeLineForm.description.trim();
+    if (!desc) {
+      addToast('Veuillez saisir une description pour la ligne libre.', 'error');
+      return;
+    }
+
+    const qty = Number(freeLineForm.quantity);
+    const disc = Number(freeLineForm.discount_percent);
+    const price = Number(freeLineForm.unit_price);
+    const vat = Number(freeLineForm.vat_rate);
+    const priceAfterDiscount = price * (1 - disc / 100);
+    const totalHT = qty * priceAfterDiscount;
+    const totalVAT = totalHT * (vat / 100);
+    const totalTTC = totalHT + totalVAT;
+
+    const newLine: DocumentLineForm = {
+      item_id: null,
+      description: desc,
+      line_type: freeLineForm.line_type,
+      quantity: qty,
+      unit: freeLineForm.line_type === 'labor' ? 'h' : freeLineForm.unit,
+      unit_price: price,
+      discount_percent: disc,
+      vat_rate: vat,
+      total_ht: totalHT,
+      total_vat: totalVAT,
+      total_ttc: totalTTC,
+    };
+
+    setDocForm(prev => ({
+      ...prev,
+      lines: [...prev.lines, newLine],
+    }));
+
+    setFreeLineForm({
+      description: '',
+      line_type: 'part',
+      quantity: 1,
+      unit: 'pcs',
+      unit_price: 0,
+      discount_percent: 0,
+      vat_rate: 19,
+    });
+  };
+
   const removeDocLine = (index: number) => {
     setDocForm(prev => ({
       ...prev,
@@ -253,9 +309,14 @@ export default function DocumentsPage() {
         addToast(err.error || 'Erreur de conversion', 'error');
         return;
       }
+      const result = await res.json();
       setSelectedDoc(null);
       loadData();
-      addToast(`Document converti en ${nextType === 'repair_order' ? 'ordre de réparation' : 'facture'}`);
+      const baseMsg = nextType === 'repair_order' ? 'Devis validé — ordre de réparation créé' : 'Document converti en facture';
+      const stockMsg = result.stockItemsCreated > 0
+        ? ` (${result.stockItemsCreated} article${result.stockItemsCreated > 1 ? 's' : ''} ajouté${result.stockItemsCreated > 1 ? 's' : ''} au stock)`
+        : '';
+      addToast(`${baseMsg}${stockMsg}`);
     } catch (err) {
       console.error(err);
       addToast('Erreur de conversion', 'error');
@@ -632,7 +693,7 @@ export default function DocumentsPage() {
                               vehicle_id: doc.vehicle_id || '',
                               notes: doc.notes || '',
                               lines: (doc.document_lines || []).map((l: DocumentLine, idx: number) => ({
-                                item_id: l.item_id || '',
+                                item_id: l.item_id || null,
                                 description: l.description || `Ligne ${idx + 1}`,
                                 line_type: l.line_type || 'part',
                                 quantity: Number(l.quantity),
@@ -731,7 +792,7 @@ export default function DocumentsPage() {
               </div>
 
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h4 className="text-xs font-bold text-slate-300">{"Ajouter des lignes (Pièces & Main-d'œuvre)"}</h4>
+                <h4 className="text-xs font-bold text-slate-300">Ajouter depuis le catalogue</h4>
                 <div className="grid grid-cols-12 gap-3 items-end">
                   <div className="col-span-5">
                     <label className="text-[10px] text-slate-500 block mb-1">Article</label>
@@ -774,7 +835,86 @@ export default function DocumentsPage() {
                       disabled={!selectedItemToAdd}
                       className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-600 text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs transition"
                     >
-                      Ajouter la ligne
+                      Ajouter du catalogue
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/60 border border-indigo-500/20 rounded-xl p-4 space-y-4">
+                <div>
+                  <h4 className="text-xs font-bold text-indigo-300">Saisie libre — Pièce ou main-d&apos;œuvre</h4>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Les articles saisis librement seront ajoutés au stock lors de la validation du devis.
+                  </p>
+                </div>
+                <div className="grid grid-cols-12 gap-3 items-end">
+                  <div className="col-span-4">
+                    <label className="text-[10px] text-slate-500 block mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={freeLineForm.description}
+                      onChange={(e) => setFreeLineForm(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Ex: Filtre à huile, Révision moteur..."
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-slate-500 block mb-1">Type</label>
+                    <select
+                      value={freeLineForm.line_type}
+                      onChange={(e) => setFreeLineForm(prev => ({
+                        ...prev,
+                        line_type: e.target.value as 'part' | 'labor',
+                        unit: e.target.value === 'labor' ? 'h' : 'pcs',
+                      }))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                    >
+                      <option value="part">Pièce</option>
+                      <option value="labor">Main-d&apos;œuvre</option>
+                    </select>
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-[10px] text-slate-500 block mb-1">Qté</label>
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="0.1"
+                      value={freeLineForm.quantity}
+                      onChange={(e) => setFreeLineForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-slate-500 block mb-1">P.U HT (DT)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={freeLineForm.unit_price}
+                      onChange={(e) => setFreeLineForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-[10px] text-slate-500 block mb-1">Rem.%</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={freeLineForm.discount_percent}
+                      onChange={(e) => setFreeLineForm(prev => ({ ...prev, discount_percent: Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <button
+                      type="button"
+                      onClick={addFreeLineItem}
+                      disabled={!freeLineForm.description.trim()}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-600 text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs transition"
+                    >
+                      Ajouter saisie libre
                     </button>
                   </div>
                 </div>
@@ -795,12 +935,24 @@ export default function DocumentsPage() {
                   <tbody>
                     {docForm.lines.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-slate-500">Aucun article ajouté. Utilisez le sélecteur ci-dessus pour ajouter des lignes.</td>
+                        <td colSpan={6} className="p-8 text-center text-slate-500">Aucun article ajouté. Utilisez le catalogue ou la saisie libre ci-dessus.</td>
                       </tr>
                     ) : (
                       docForm.lines.map((line: DocumentLineForm, idx: number) => (
                         <tr key={idx} className="border-b border-slate-800">
-                          <td className="p-3 text-slate-200 font-medium">{line.description}</td>
+                          <td className="p-3 text-slate-200 font-medium">
+                            <span className="flex items-center gap-2">
+                              {!line.item_id && (
+                                <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                                  Libre
+                                </span>
+                              )}
+                              {line.description}
+                              <span className="text-[9px] text-slate-500">
+                                ({line.line_type === 'labor' ? 'MO' : 'Pièce'})
+                              </span>
+                            </span>
+                          </td>
                           <td className="p-3 text-right text-slate-300 font-mono">{Number(line.unit_price).toFixed(2)} DT</td>
                           <td className="p-3 text-right text-slate-300 font-mono">{line.quantity}</td>
                           <td className="p-3 text-right text-slate-400">{line.discount_percent}%</td>

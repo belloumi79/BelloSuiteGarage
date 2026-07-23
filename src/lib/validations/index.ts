@@ -93,11 +93,11 @@ function coerceToNumber(val: unknown) {
 const lineTypeSchema = z.enum(['part', 'labor', 'service', 'note', 'product']);
 
 export const documentLineSchema = z.object({
-    item_id: z.preprocess((val) => val === '' ? undefined : val, z.string().uuid().optional()),
-    line_type: z.union([lineTypeSchema, z.literal('')]).transform((val) => val === '' ? 'part' : val),
+    item_id: z.preprocess((val) => (val === '' || val === null ? undefined : val), z.string().uuid().optional().nullable()),
+    line_type: z.union([lineTypeSchema, z.literal('')]).transform((val) => (val === '' || val === null || val === undefined ? 'part' : val)),
     description: z.string().min(1),
     quantity: z.preprocess(coerceToNumber, z.number().min(0.001)),
-    unit: z.string().default('pcs'),
+    unit: z.preprocess((val) => (val === '' || val === null || val === undefined ? 'pcs' : String(val)), z.string().default('pcs')),
     unit_price: z.preprocess(coerceToNumber, z.number().min(0)),
     discount_percent: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(0)),
     vat_rate: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(19)),
@@ -110,17 +110,17 @@ export const documentLineSchema = z.object({
 export const documentCreateSchema = z.object({
     type: z.enum(['quote', 'repair_order', 'invoice', 'credit_note']),
     client_id: z.string().uuid(),
-    vehicle_id: z.preprocess((val) => val === '' ? undefined : val, z.string().uuid().optional()),
-    notes: z.string().optional(),
+    vehicle_id: z.preprocess((val) => (val === '' || val === null ? undefined : val), z.string().uuid().optional().nullable()),
+    notes: z.preprocess((val) => (val === null ? undefined : val), z.string().optional()),
     lines: z.array(documentLineSchema).min(1, 'At least one line is required'),
 });
 
 export const documentUpdateSchema = z.object({
     status: z.enum(['draft', 'sent', 'partial', 'paid', 'cancelled']).optional(),
-    notes: z.string().optional(),
+    notes: z.preprocess((val) => (val === null ? undefined : val), z.string().optional()),
     lines: z.array(documentLineSchema).optional(),
     transitionTo: z.enum(['repair_order', 'invoice']).optional(),
-    vehicle_id: z.preprocess((val) => val === '' ? undefined : val, z.string().uuid().optional()),
+    vehicle_id: z.preprocess((val) => (val === '' || val === null ? undefined : val), z.string().uuid().optional().nullable()),
 });
 
 /**

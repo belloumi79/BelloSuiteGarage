@@ -811,7 +811,8 @@ export default function DocumentsPage() {
                     <label className="text-[10px] text-slate-500 block mb-1">Quantité</label>
                     <input
                       type="number"
-                      min="1"
+                      min="0.001"
+                      step="any"
                       value={addLineQty}
                       onChange={(e) => setAddLineQty(Number(e.target.value))}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
@@ -823,6 +824,7 @@ export default function DocumentsPage() {
                       type="number"
                       min="0"
                       max="100"
+                      step="any"
                       value={addLineDiscount}
                       onChange={(e) => setAddLineDiscount(Number(e.target.value))}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
@@ -879,7 +881,7 @@ export default function DocumentsPage() {
                     <input
                       type="number"
                       min="0.001"
-                      step="0.1"
+                      step="any"
                       value={freeLineForm.quantity}
                       onChange={(e) => setFreeLineForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
@@ -890,7 +892,7 @@ export default function DocumentsPage() {
                     <input
                       type="number"
                       min="0"
-                      step="0.001"
+                      step="any"
                       value={freeLineForm.unit_price}
                       onChange={(e) => setFreeLineForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
@@ -902,6 +904,7 @@ export default function DocumentsPage() {
                       type="number"
                       min="0"
                       max="100"
+                      step="any"
                       value={freeLineForm.discount_percent}
                       onChange={(e) => setFreeLineForm(prev => ({ ...prev, discount_percent: Number(e.target.value) }))}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"

@@ -8,10 +8,13 @@ import {
   Trash2,
   Pencil,
   RefreshCw,
+  ScanLine,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import VoiceInputButton from '@/components/ui/VoiceInputButton';
+import PlateScannerModal from '@/components/ui/PlateScannerModal';
 import makesData from '@/data/car-makes.json';
 import versionsData from '@/data/car-versions.json';
 import type { Vehicle, Client } from '@/lib/types';
@@ -26,6 +29,7 @@ export default function VehiclesPage() {
   const [total, setTotal] = useState(0);
   const pageSize = 12;
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [isPlateScannerOpen, setIsPlateScannerOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; plate: string } | null>(null);
 
@@ -167,23 +171,40 @@ export default function VehiclesPage() {
       <div className="p-6 space-y-6 no-print">
         <div className="space-y-6">
           <div className="flex justify-between items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Rechercher par immatriculation, marque, modèle..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+            <div className="relative flex-1 max-w-md flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par immatriculation, marque, modèle..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+                />
+              </div>
+              <VoiceInputButton
+                onTranscript={(text) => setSearchQuery(text)}
+                title="Dictée vocale recherche"
               />
             </div>
-            <button
-              onClick={() => setIsVehicleModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-slate-100 font-medium px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition"
-            >
-              <Plus className="w-4 h-4" />
-              Nouveau Véhicule
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPlateScannerOpen(true)}
+                className="bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-medium px-3.5 py-2.5 rounded-xl text-sm flex items-center gap-2 transition"
+                title="Scanner une immatriculation par photo/caméra"
+              >
+                <ScanLine className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>Scanner Plaque (IA)</span>
+              </button>
+              <button
+                onClick={() => setIsVehicleModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-slate-100 font-medium px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition"
+              >
+                <Plus className="w-4 h-4" />
+                Nouveau Véhicule
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -313,29 +334,41 @@ export default function VehiclesPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Immatriculation</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 123 TUN 4567"
-                    value={vehicleForm.plate}
-                    onChange={(e) => setVehicleForm(prev => ({ ...prev, plate: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  />
+                  <label className="text-xs text-slate-400 block mb-1">Immatriculation *</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 123 TUN 4567"
+                      value={vehicleForm.plate}
+                      onChange={(e) => setVehicleForm(prev => ({ ...prev, plate: e.target.value }))}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                    <VoiceInputButton
+                      onTranscript={(text) => setVehicleForm(prev => ({ ...prev, plate: text.toUpperCase() }))}
+                      title="Dictée immatriculation"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">
                     VIN
                     <span className="text-slate-600 ml-1">(17 caractères)</span>
                   </label>
-                  <input
-                    type="text"
-                    maxLength={17}
-                    placeholder="e.g. WAUZZZ8V..."
-                    value={vehicleForm.vin}
-                    onChange={(e) => setVehicleForm(prev => ({ ...prev, vin: e.target.value.toUpperCase() }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      maxLength={17}
+                      placeholder="e.g. WAUZZZ8V..."
+                      value={vehicleForm.vin}
+                      onChange={(e) => setVehicleForm(prev => ({ ...prev, vin: e.target.value.toUpperCase() }))}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none"
+                    />
+                    <VoiceInputButton
+                      onTranscript={(text) => setVehicleForm(prev => ({ ...prev, vin: text.replace(/\s+/g, '').toUpperCase() }))}
+                      title="Dictée VIN"
+                    />
+                  </div>
                 </div>
                 <SearchableSelect
                   label="Marque"
@@ -385,12 +418,18 @@ export default function VehiclesPage() {
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Couleur</label>
-                  <input
-                    type="text"
-                    value={vehicleForm.color}
-                    onChange={(e) => setVehicleForm(prev => ({ ...prev, color: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={vehicleForm.color}
+                      onChange={(e) => setVehicleForm(prev => ({ ...prev, color: e.target.value }))}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                    <VoiceInputButton
+                      onTranscript={(text) => setVehicleForm(prev => ({ ...prev, color: text }))}
+                      title="Dictée couleur"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Kilométrage</label>
@@ -419,6 +458,16 @@ export default function VehiclesPage() {
         confirmLabel="Supprimer"
         onConfirm={handleDeleteVehicle}
         onCancel={() => setConfirmDelete(null)}
+      />
+
+      <PlateScannerModal
+        open={isPlateScannerOpen}
+        onClose={() => setIsPlateScannerOpen(false)}
+        onPlateDetected={(plate) => {
+          setSearchQuery(plate);
+          setVehicleForm(prev => ({ ...prev, plate }));
+          setIsVehicleModalOpen(true);
+        }}
       />
     </>
   );

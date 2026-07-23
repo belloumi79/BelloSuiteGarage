@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import VoiceInputButton from '@/components/ui/VoiceInputButton';
 import type { Client } from '@/lib/types';
 
 export default function ClientsPage() {
@@ -150,14 +151,20 @@ export default function ClientsPage() {
       <div className="p-6 space-y-6 no-print">
         <div className="space-y-6">
           <div className="flex justify-between items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Rechercher un client (nom, tél, société...)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+            <div className="relative flex-1 max-w-md flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un client (nom, tél, société...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+                />
+              </div>
+              <VoiceInputButton
+                onTranscript={(text) => setSearchQuery(text)}
+                title="Dictée vocale recherche"
               />
             </div>
             <button
@@ -304,35 +311,44 @@ export default function ClientsPage() {
               {clientForm.type === 'company' ? (
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Nom de l&apos;entreprise</label>
-                  <input
-                    type="text"
-                    required
-                    value={clientForm.company_name}
-                    onChange={(e) => setClientForm(prev => ({ ...prev, company_name: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={clientForm.company_name}
+                      onChange={(e) => setClientForm(prev => ({ ...prev, company_name: e.target.value }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                    <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, company_name: txt }))} />
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Prénom</label>
-                    <input
-                      type="text"
-                      required
-                      value={clientForm.first_name}
-                      onChange={(e) => setClientForm(prev => ({ ...prev, first_name: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        required
+                        value={clientForm.first_name}
+                        onChange={(e) => setClientForm(prev => ({ ...prev, first_name: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                      />
+                      <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, first_name: txt }))} />
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Nom de famille</label>
-                    <input
-                      type="text"
-                      required
-                      value={clientForm.last_name}
-                      onChange={(e) => setClientForm(prev => ({ ...prev, last_name: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        required
+                        value={clientForm.last_name}
+                        onChange={(e) => setClientForm(prev => ({ ...prev, last_name: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                      />
+                      <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, last_name: txt }))} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -340,13 +356,16 @@ export default function ClientsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Téléphone</label>
-                  <input
-                    type="text"
-                    required
-                    value={clientForm.phone}
-                    onChange={(e) => setClientForm(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={clientForm.phone}
+                      onChange={(e) => setClientForm(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                    <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, phone: txt }))} />
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">E-mail</label>
@@ -362,21 +381,27 @@ export default function ClientsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Adresse</label>
-                  <input
-                    type="text"
-                    value={clientForm.address_line1}
-                    onChange={(e) => setClientForm(prev => ({ ...prev, address_line1: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={clientForm.address_line1}
+                      onChange={(e) => setClientForm(prev => ({ ...prev, address_line1: e.target.value }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                    <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, address_line1: txt }))} />
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Ville</label>
-                  <input
-                    type="text"
-                    value={clientForm.city}
-                    onChange={(e) => setClientForm(prev => ({ ...prev, city: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={clientForm.city}
+                      onChange={(e) => setClientForm(prev => ({ ...prev, city: e.target.value }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                    <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, city: txt }))} />
+                  </div>
                 </div>
               </div>
 

@@ -12,18 +12,16 @@ interface PlateScannerModalProps {
 }
 
 // ─── Tunisian plate patterns ──────────────────────────────────────────────────
-// Latin modern:  "RS 1234"  (RS = région série, 1-4 digits)
-// Latin old:     "123 TN 4567" or "123 TUN 4567"
-// Arabic:        Arabic-Indic digits + تونس or ت
+const TN_LATIN_OLD = /(\d{1,4})\s*(TUN|TUNIS|TN)\s*(\d{1,4})/i;
 const TN_LATIN_NEW = /\b([A-Z]{1,3})\s*(\d{1,4})\b/i;
-const TN_LATIN_OLD = /(\d{1,4})\s*(TUN|TUNIS|TN|ت)\s*(\d{1,4})/i;
 const EU_STANDARD  = /\b([A-Z]{1,3})[- ](\d{2,4})[- ]([A-Z]{1,3})\b/i;
 
-// Arabic-Indic digit map
+// Arabic-Indic digit mapping
 const AR_TO_EN: Record<string, string> = {
-  '٠':'0','١':'1','٢':'2','٣':'3','٤':'4',
-  '٥':'5','٦':'6','٧':'7','٨':'8','٩':'9',
+  '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+  '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
 };
+
 function normalizeArabicNumerals(s: string): string {
   return s.replace(/[٠-٩]/g, d => AR_TO_EN[d] ?? d);
 }
@@ -33,26 +31,25 @@ function extractPlate(raw: string): string {
   const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
 
   for (const line of lines) {
-    const cleaned = line.replace(/[^A-Z0-9\s\-]/gi, ' ').replace(/\s+/g, ' ').trim();
+    const cleaned = line.replace(/[^A-Z0-9\s-]/gi, ' ').replace(/\s+/g, ' ').trim();
 
     const m1 = cleaned.match(TN_LATIN_OLD);
     if (m1) return `${m1[1]} TN ${m1[3]}`.toUpperCase();
 
+    const m3 = cleaned.match(EU_STANDARD);
+    if (m3) return `${m3[1]}-${m3[2]}-${m3[3]}`.toUpperCase();
+
     const m2 = cleaned.match(TN_LATIN_NEW);
     if (m2 && m2[1].length <= 3 && parseInt(m2[2]) > 0)
       return `${m2[1].toUpperCase()} ${m2[2]}`;
-
-    const m3 = cleaned.match(EU_STANDARD);
-    if (m3) return `${m3[1]}-${m3[2]}-${m3[3]}`.toUpperCase();
   }
 
-  // Fallback: return longest alphanumeric token
+  // Fallback: longest alphanumeric sequence
   const tokens = normalized.replace(/[^A-Z0-9\s]/gi, ' ').split(/\s+/).filter(t => t.length >= 2);
-  if (tokens.length) return tokens.join(' ').toUpperCase();
-  return '';
+  return tokens.length ? tokens.join(' ').toUpperCase() : '';
 }
 
-// ─── Image preprocessing (adaptive binarization) ─────────────────────────────
+// ─── Adaptive binarization preprocessing ─────────────────────────────────────
 function preprocessImage(dataUrl: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -60,7 +57,6 @@ function preprocessImage(dataUrl: string): Promise<string> {
       const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
-
       const canvas = document.createElement('canvas');
       canvas.width = w;
       canvas.height = h;
@@ -72,13 +68,11 @@ function preprocessImage(dataUrl: string): Promise<string> {
       const data = imageData.data;
       const gray = new Uint8Array(w * h);
 
-      // Grayscale
       for (let i = 0; i < gray.length; i++) {
         const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
         gray[i] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
       }
 
-      // Adaptive threshold (local mean with block radius 15)
       const R = 15;
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
@@ -94,7 +88,7 @@ function preprocessImage(dataUrl: string): Promise<string> {
               count++;
             }
           }
-          const threshold = sum / count - 5; // slight bias toward white bg
+          const threshold = (count ? sum / count : 128) - 5;
           const val = gray[idx] > threshold ? 255 : 0;
           data[idx * 4] = val;
           data[idx * 4 + 1] = val;
@@ -112,6 +106,7 @@ function preprocessImage(dataUrl: string): Promise<string> {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function PlateScannerModal({ open, onClose, onPlateDetected }: PlateScannerModalProps) {
+  // ── ALL hooks must be called BEFORE any conditional return ──────────────────
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [statusText, setStatusText] = useState('');
@@ -124,7 +119,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
   const streamRef = useRef<MediaStream | null>(null);
   const { addToast } = useToast();
 
-  // ── Assign stream to video element once it is rendered ──────────────────────
+  // Bind stream to <video> once cameraActive=true renders the element
   useEffect(() => {
     if (cameraActive && streamRef.current && videoRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -132,15 +127,63 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
     }
   }, [cameraActive]);
 
-  // ── Cleanup on unmount / close ───────────────────────────────────────────────
+  // Cleanup on unmount
   useEffect(() => {
-    return () => stopCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    };
   }, []);
 
+  // OCR function — must be defined before early return
+  const processOCR = useCallback(async (src: string) => {
+    setScanning(true);
+    setStatusText("Prétraitement de l'image…");
+    try {
+      const processed = await preprocessImage(src);
+      setStatusText('Analyse OCR (Anglais + Arabe)…');
+
+      const workerEng = await createWorker('eng', 1, {
+        logger: (m: { progress: number }) => {
+          if (m.progress) setStatusText(`Analyse… ${Math.round(m.progress * 100)}%`);
+        },
+      });
+      await workerEng.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -',
+      });
+      const { data: dataEng } = await workerEng.recognize(processed);
+      await workerEng.terminate();
+
+      let plate = extractPlate(dataEng.text);
+
+      if (!plate) {
+        setStatusText('Essai avec OCR arabe…');
+        const workerAra = await createWorker('ara');
+        const { data: dataAra } = await workerAra.recognize(processed);
+        await workerAra.terminate();
+        plate = extractPlate(dataAra.text);
+      }
+
+      setDetectedPlate(plate);
+      setStatusText('Détection terminée !');
+      if (plate) {
+        addToast(`Plaque détectée : ${plate}`);
+      } else {
+        addToast('Aucune immatriculation lisible. Essayez une image plus nette.', 'info');
+      }
+    } catch (err) {
+      console.error('OCR Error:', err);
+      setStatusText("Erreur lors de l'analyse");
+      addToast("Erreur lors de l'analyse de la photo.", 'error');
+    } finally {
+      setScanning(false);
+    }
+  }, [addToast]);
+
+  // ── Early return AFTER all hooks ────────────────────────────────────────────
   if (!open) return null;
 
-  // ── Camera helpers ───────────────────────────────────────────────────────────
+  // ── Camera helpers ──────────────────────────────────────────────────────────
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
@@ -156,12 +199,12 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
-      setCameraActive(true); // <-- triggers useEffect above to bind srcObject
+      setCameraActive(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      const hint = msg.includes('Permission')
+      const hint = msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('denied')
         ? 'Accès caméra refusé. Autorisez la caméra dans les paramètres du navigateur.'
-        : `Impossible d'accéder à la caméra: ${msg}`;
+        : `Impossible d'accéder à la caméra : ${msg}`;
       setCameraError(hint);
       addToast(hint, 'error');
     }
@@ -196,60 +239,6 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
     reader.readAsDataURL(file);
   };
 
-  // ── OCR ──────────────────────────────────────────────────────────────────────
-  const processOCR = useCallback(async (src: string) => {
-    setScanning(true);
-    setStatusText("Prétraitement de l'image…");
-    try {
-      const processed = await preprocessImage(src);
-      setStatusText('Initialisation OCR (Eng + Arabe)…');
-
-      // Try with English first (faster), then with Arabic if no result
-      const workerEng = await createWorker('eng', 1, {
-        logger: (m: { progress: number }) => {
-          if (m.progress) setStatusText(`Analyse… ${Math.round(m.progress * 100)}%`);
-        },
-      });
-      await workerEng.setParameters({ tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -' });
-      const { data: dataEng } = await workerEng.recognize(processed);
-      await workerEng.terminate();
-
-      let plate = extractPlate(dataEng.text);
-
-      // If nothing found, try Arabic pass
-      if (!plate) {
-        setStatusText('Essai avec OCR arabe…');
-        const workerAra = await createWorker('ara');
-        const { data: dataAra } = await workerAra.recognize(processed);
-        await workerAra.terminate();
-        plate = extractPlate(dataAra.text);
-      }
-
-      setDetectedPlate(plate);
-      setStatusText('Détection terminée !');
-      if (plate) {
-        addToast(`Plaque détectée : ${plate}`);
-      } else {
-        addToast('Aucune immatriculation lisible. Essayez une image plus nette.', 'info');
-      }
-    } catch (err) {
-      console.error('OCR Error:', err);
-      setStatusText("Erreur lors de l'analyse");
-      addToast("Erreur lors de l'analyse de la photo.", 'error');
-    } finally {
-      setScanning(false);
-    }
-  }, [addToast]);
-
-  // ── Confirm ──────────────────────────────────────────────────────────────────
-  const handleConfirm = () => {
-    if (detectedPlate) {
-      onPlateDetected(detectedPlate);
-      stopCamera();
-      onClose();
-    }
-  };
-
   const handleReset = () => {
     stopCamera();
     setImageSrc(null);
@@ -258,7 +247,15 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
     setCameraError(null);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const handleConfirm = () => {
+    if (detectedPlate) {
+      onPlateDetected(detectedPlate);
+      stopCamera();
+      onClose();
+    }
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex justify-center items-center z-50 p-4">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col">
@@ -282,7 +279,6 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
         {/* Body */}
         <div className="p-5 space-y-4 flex-1">
 
-          {/* Camera error */}
           {cameraError && (
             <div className="flex items-start gap-2 bg-red-900/30 border border-red-500/40 rounded-xl p-3 text-xs text-red-300">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -290,16 +286,9 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             </div>
           )}
 
-          {/* Camera view */}
           {cameraActive ? (
             <div className="relative bg-black rounded-xl overflow-hidden aspect-video border border-blue-500/40">
-              <video
-                ref={videoRef}
-                className="w-full h-full object-cover"
-                playsInline
-                muted
-              />
-              {/* Plate guide frame */}
+              <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
               <div className="absolute inset-x-8 top-1/3 bottom-1/3 border-2 border-dashed border-blue-400 rounded-lg pointer-events-none flex items-center justify-center">
                 <span className="bg-slate-950/80 text-blue-300 text-[11px] px-2 py-0.5 rounded font-mono">
                   Cadrez la plaque ici
@@ -315,7 +304,6 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             </div>
 
           ) : imageSrc ? (
-            /* Preview + OCR overlay */
             <div className="relative bg-slate-950 rounded-xl overflow-hidden aspect-video border border-slate-800 flex items-center justify-center">
               <img src={imageSrc} alt="Preview plaque" className="w-full h-full object-contain" />
               {scanning && (
@@ -327,7 +315,6 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             </div>
 
           ) : (
-            /* Action buttons */
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={startCamera}
@@ -346,10 +333,9 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             </div>
           )}
 
-          {/* Hidden canvas for frame capture */}
           <canvas ref={canvasRef} className="hidden" />
 
-          {/* Result box */}
+          {/* Result */}
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
             <label className="text-xs text-slate-400 font-medium block">
               Immatriculation détectée <span className="text-slate-600">(modifiable)</span>
@@ -375,7 +361,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
               )}
             </div>
             <p className="text-[10px] text-slate-600">
-              Formats supportés : <span className="text-slate-500">RS 1234 · 123 TN 4567 · أرقام عربية · AA-123-AA</span>
+              Formats : <span className="text-slate-500">RS 1234 · 123 TN 4567 · أرقام عربية · AA-123-AA</span>
             </p>
           </div>
         </div>

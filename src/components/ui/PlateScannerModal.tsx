@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, Upload, ScanLine, X, Check, RefreshCw, Sparkles, AlertCircle, Cpu } from 'lucide-react';
+import { Camera, Upload, ScanLine, X, Check, RefreshCw, Sparkles, AlertCircle, Globe } from 'lucide-react';
 import { createWorker } from 'tesseract.js';
 import { useToast } from '@/components/ui/Toast';
-import { detectPlates, cropPlate, type PlateDetection } from '@/lib/yoloDetection';
+import { detectPlates, cropPlate, type PlateDetection } from '@/lib/roboflowDetection';
 
 interface PlateScannerModalProps {
   open: boolean;
@@ -207,7 +207,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
   const processOCR = useCallback(async (src: string) => {
     setScanning(true);
     setYoloDetections([]);
-    setStatusText("Chargement du modèle YOLO…");
+    setStatusText("Connexion à Roboflow…");
     try {
       // Load image into an element
       const img = new Image();
@@ -220,8 +220,8 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
       let plate = '';
 
       if (detectionMode === 'yolo') {
-        // YOLO detection mode
-        setStatusText('Détection YOLO des plaques…');
+        // Roboflow detection mode
+        setStatusText('Détection Roboflow des plaques…');
         const yoloResult = await detectPlates(img);
         setYoloDetections(yoloResult.detections);
 
@@ -273,8 +273,8 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             if (plate) break; // Stop if we found a plate
           }
         } else {
-          // No plates detected by YOLO, fallback to full image OCR
-          setStatusText('Aucune plaque détectée par YOLO, essai OCR global…');
+          // No plates detected by Roboflow, fallback to full image OCR
+          setStatusText('Aucune plaque détectée, essai OCR global…');
           const processed = await preprocessImage(src);
           plate = await runFullOCR(processed);
         }
@@ -419,8 +419,8 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Cpu className="w-4 h-4" />
-                YOLO + OCR
+                <Globe className="w-4 h-4" />
+                Roboflow + OCR
               </button>
               <button
                 onClick={() => setDetectionMode('ocr')}

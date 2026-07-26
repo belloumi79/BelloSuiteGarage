@@ -24,17 +24,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Forward request to Roboflow API
+    // Forward request to Roboflow API (using form-urlencoded)
+    const formData = new URLSearchParams();
+    formData.append('image', image);
+    formData.append('confidence', String(confidence));
+    formData.append('overlap', String(overlap));
+
     const response = await fetch(`${ROBOFLOW_API_URL}?api_key=${apiKey}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        image,
-        confidence,
-        overlap,
-      }),
+      body: formData.toString(),
     });
 
     if (!response.ok) {

@@ -22,7 +22,7 @@ const ROBOFLOW_API_URL = '/api/roboflow';
 const CONFIDENCE_THRESHOLD = 0.45;
 const OVERLAP_THRESHOLD = 0.3;
 
-// ─── Convert image to base64 with data URL prefix ─────────────────────────────
+// ─── Convert image to base64 (without data URL prefix for Roboflow) ───────────
 function imageToBase64(source: HTMLImageElement | HTMLCanvasElement): string {
   const canvas = document.createElement('canvas');
 
@@ -38,8 +38,8 @@ function imageToBase64(source: HTMLImageElement | HTMLCanvasElement): string {
   if (!ctx) throw new Error('Cannot create canvas context');
 
   ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-  // Return full data URL (with prefix) for Roboflow API
-  return canvas.toDataURL('image/jpeg', 0.92);
+  // Return raw base64 (without prefix) for Roboflow API
+  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
 }
 
 // ─── Main detection function ──────────────────────────────────────────────────

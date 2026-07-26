@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, Upload, ScanLine, X, Check, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
+import { Camera, Upload, ScanLine, X, Check, RefreshCw, Sparkles, AlertCircle, Cpu } from 'lucide-react';
 import { createWorker } from 'tesseract.js';
 import { useToast } from '@/components/ui/Toast';
+import { detectPlates, cropPlate, type PlateDetection } from '@/lib/yoloDetection';
 
 interface PlateScannerModalProps {
   open: boolean;
@@ -140,6 +141,35 @@ function preprocessImage(dataUrl: string): Promise<string> {
   });
 }
 
+// ─── Helper: Run OCR on full image ────────────────────────────────────────────
+async function runFullOCR(processedImage: string): Promise<string> {
+  // Try French first (best for Tunisian plates with both scripts)
+  const workerFra = await createWorker('fra', 1);
+  await workerFra.setParameters({
+    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -تونس',
+  });
+  const { data: dataFra } = await workerFra.recognize(processedImage);
+  await workerFra.terminate();
+
+  let plate = extractPlate(dataFra.text);
+  if (plate) return plate;
+
+  // Try English
+  const workerEng = await createWorker('eng');
+  const { data: dataEng } = await workerEng.recognize(processedImage);
+  await workerEng.terminate();
+  plate = extractPlate(dataEng.text);
+  if (plate) return plate;
+
+  // Try Arabic
+  const workerAra = await createWorker('ara');
+  const { data: dataAra } = await workerAra.recognize(processedImage);
+  await workerAra.terminate();
+  plate = extractPlate(dataAra.text);
+
+  return plate;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function PlateScannerModal({ open, onClose, onPlateDetected }: PlateScannerModalProps) {
   // ── ALL hooks must be called BEFORE any conditional return ──────────────────
@@ -149,6 +179,8 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
   const [detectedPlate, setDetectedPlate] = useState('');
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [yoloDetections, setYoloDetections] = useState<PlateDetection[]>([]);
+  const [detectionMode, setDetectionMode] = useState<'yolo' | 'ocr'>('yolo');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -174,41 +206,83 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
   // OCR function — must be defined before early return
   const processOCR = useCallback(async (src: string) => {
     setScanning(true);
-    setStatusText("Prétraitement de l'image…");
+    setYoloDetections([]);
+    setStatusText("Chargement du modèle YOLO…");
     try {
-      const processed = await preprocessImage(src);
-      setStatusText('Analyse OCR (Français + Arabe + Anglais)…');
-
-      // Try French first (best for Tunisian plates with both scripts)
-      const workerFra = await createWorker('fra', 1, {
-        logger: (m: { progress: number }) => {
-          if (m.progress) setStatusText(`Analyse… ${Math.round(m.progress * 100)}%`);
-        },
+      // Load image into an element
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = src;
       });
-      await workerFra.setParameters({
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -تونس',
-      });
-      const { data: dataFra } = await workerFra.recognize(processed);
-      await workerFra.terminate();
 
-      let plate = extractPlate(dataFra.text);
+      let plate = '';
 
-      // Try English if French didn't find a plate
-      if (!plate) {
-        setStatusText('Essai avec OCR anglais…');
-        const workerEng = await createWorker('eng');
-        const { data: dataEng } = await workerEng.recognize(processed);
-        await workerEng.terminate();
-        plate = extractPlate(dataEng.text);
-      }
+      if (detectionMode === 'yolo') {
+        // YOLO detection mode
+        setStatusText('Détection YOLO des plaques…');
+        const yoloResult = await detectPlates(img);
+        setYoloDetections(yoloResult.detections);
 
-      // Try Arabic if still no plate
-      if (!plate) {
-        setStatusText('Essai avec OCR arabe…');
-        const workerAra = await createWorker('ara');
-        const { data: dataAra } = await workerAra.recognize(processed);
-        await workerAra.terminate();
-        plate = extractPlate(dataAra.text);
+        if (yoloResult.detections.length > 0) {
+          setStatusText(`${yoloResult.detections.length} plaque(s) détectée(s) en ${Math.round(yoloResult.inferenceTime)}ms`);
+
+          // Process each detected plate
+          for (let i = 0; i < yoloResult.detections.length; i++) {
+            const det = yoloResult.detections[i];
+            setStatusText(`OCR sur plaque ${i + 1}/${yoloResult.detections.length}…`);
+
+            // Crop the plate region
+            const croppedCanvas = cropPlate(img, det.bbox);
+            const croppedSrc = croppedCanvas.toDataURL('image/png');
+
+            // Preprocess for better OCR
+            const processed = await preprocessImage(croppedSrc);
+
+            // Try French first (best for Tunisian plates)
+            const workerFra = await createWorker('fra', 1, {
+              logger: (m: { progress: number }) => {
+                if (m.progress) setStatusText(`OCR plaque ${i + 1}… ${Math.round(m.progress * 100)}%`);
+              },
+            });
+            await workerFra.setParameters({
+              tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -تونس',
+            });
+            const { data: dataFra } = await workerFra.recognize(processed);
+            await workerFra.terminate();
+
+            plate = extractPlate(dataFra.text);
+
+            // Try English if French didn't find a plate
+            if (!plate) {
+              const workerEng = await createWorker('eng');
+              const { data: dataEng } = await workerEng.recognize(processed);
+              await workerEng.terminate();
+              plate = extractPlate(dataEng.text);
+            }
+
+            // Try Arabic if still no plate
+            if (!plate) {
+              const workerAra = await createWorker('ara');
+              const { data: dataAra } = await workerAra.recognize(processed);
+              await workerAra.terminate();
+              plate = extractPlate(dataAra.text);
+            }
+
+            if (plate) break; // Stop if we found a plate
+          }
+        } else {
+          // No plates detected by YOLO, fallback to full image OCR
+          setStatusText('Aucune plaque détectée par YOLO, essai OCR global…');
+          const processed = await preprocessImage(src);
+          plate = await runFullOCR(processed);
+        }
+      } else {
+        // Direct OCR mode (original behavior)
+        setStatusText('Analyse OCR (Français + Arabe + Anglais)…');
+        const processed = await preprocessImage(src);
+        plate = await runFullOCR(processed);
       }
 
       setDetectedPlate(plate);
@@ -219,13 +293,13 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
         addToast('Aucune immatriculation lisible. Essayez une image plus nette.', 'info');
       }
     } catch (err) {
-      console.error('OCR Error:', err);
+      console.error('Detection Error:', err);
       setStatusText("Erreur lors de l'analyse");
       addToast("Erreur lors de l'analyse de la photo.", 'error');
     } finally {
       setScanning(false);
     }
-  }, [addToast]);
+  }, [addToast, detectionMode]);
 
   // ── Early return AFTER all hooks ────────────────────────────────────────────
   if (!open) return null;
@@ -292,6 +366,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
     setDetectedPlate('');
     setStatusText('');
     setCameraError(null);
+    setYoloDetections([]);
   };
 
   const handleConfirm = () => {
@@ -333,6 +408,34 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             </div>
           )}
 
+          {/* Detection Mode Toggle */}
+          {!imageSrc && !cameraActive && (
+            <div className="flex gap-2 p-1 bg-slate-800/60 rounded-xl">
+              <button
+                onClick={() => setDetectionMode('yolo')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition ${
+                  detectionMode === 'yolo'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Cpu className="w-4 h-4" />
+                YOLO + OCR
+              </button>
+              <button
+                onClick={() => setDetectionMode('ocr')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition ${
+                  detectionMode === 'ocr'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ScanLine className="w-4 h-4" />
+                OCR Seul
+              </button>
+            </div>
+          )}
+
           {cameraActive ? (
             <div className="relative bg-black rounded-xl overflow-hidden aspect-video border border-blue-500/40">
               <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
@@ -353,6 +456,45 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
           ) : imageSrc ? (
             <div className="relative bg-slate-950 rounded-xl overflow-hidden aspect-video border border-slate-800 flex items-center justify-center">
               <img src={imageSrc} alt="Preview plaque" className="w-full h-full object-contain" />
+
+              {/* YOLO Detection Boxes Overlay */}
+              {yoloDetections.length > 0 && !scanning && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {yoloDetections.map((det, idx) => {
+                    const imgEl = document.querySelector('img[alt="Preview plaque"]') as HTMLImageElement;
+                    if (!imgEl) return null;
+
+                    const imgW = imgEl.clientWidth;
+                    const imgH = imgEl.clientHeight;
+                    const natW = imgEl.naturalWidth || imgW;
+                    const natH = imgEl.naturalHeight || imgH;
+
+                    const scale = Math.min(imgW / natW, imgH / natH);
+                    const displayW = natW * scale;
+                    const displayH = natH * scale;
+                    const offsetX = (imgW - displayW) / 2;
+                    const offsetY = (imgH - displayH) / 2;
+
+                    const x = offsetX + (det.bbox.x / natW) * displayW;
+                    const y = offsetY + (det.bbox.y / natH) * displayH;
+                    const w = (det.bbox.width / natW) * displayW;
+                    const h = (det.bbox.height / natH) * displayH;
+
+                    return (
+                      <div
+                        key={idx}
+                        className="absolute border-2 border-green-400 rounded"
+                        style={{ left: x, top: y, width: w, height: h }}
+                      >
+                        <span className="absolute -top-5 left-0 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+                          Plaque {(det.confidence * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {scanning && (
                 <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-4">
                   <Sparkles className="w-8 h-8 text-blue-400 animate-spin" />

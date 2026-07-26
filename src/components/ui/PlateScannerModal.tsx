@@ -12,17 +12,7 @@ interface PlateScannerModalProps {
   onPlateDetected: (plate: string) => void;
 }
 
-// ─── Tunisian plate patterns ──────────────────────────────────────────────────
-// Format exact: Y تونس X (number + Arabic "تونس" + number)
-// e.g. "123 تونس 4567" → "123 TN 4567"
-const TN_ARABIC = /(\d{1,4})\s*تونس\s*(\d{1,4})/;
-const TN_LATIN_OLD = /(\d{1,4})\s*(TUN|TUNIS|TN)\s*(\d{1,4})/i;
-const TN_LATIN_NEW = /\b([A-Z]{2,3})\s*(\d{1,4})\b/i;
-const TN_CODE_NUMBER = /\b(\d{1,3})\s*([A-Z]{2,3})\s*(\d{1,4})\b/i;
-const EU_STANDARD  = /\b([A-Z]{1,3})[- ](\d{2,4})[- ]([A-Z]{1,3})\b/i;
-const GENERIC_PLATE = /\b[A-Z0-9]{1,4}[- ]?[A-Z0-9]{1,4}[- ]?[A-Z0-9]{0,4}\b/i;
-
-// Arabic-Indic digit mapping
+// ─── Arabic-Indic digit mapping ───────────────────────────────────────────────
 const AR_TO_EN: Record<string, string> = {
   '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
   '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
@@ -32,142 +22,313 @@ function normalizeArabicNumerals(s: string): string {
   return s.replace(/[٠-٩]/g, d => AR_TO_EN[d] ?? d);
 }
 
+// ─── Fuzzy match for "تونس" (common OCR misreads) ────────────────────────────
+// Tesseract often misreads Arabic plates: "toni", "tons", "tuns", "tnl", etc.
+const TUNISIA_ARABIC = 'تونس';
+const TUNISIA_LATIN_FUZZY = /\b(?:TUNIS|TUNI|TONI|TONS|TUNS|TNL|TNI|TNS|TUN[I1L]|TOI1S)\b/i;
+const TUNISIA_ARABIC_FUZZY = /تون[سشصس1]s?|توئس|تون[يى]س|ت و ن س/;
+
+function hasTunisiaMarker(text: string): boolean {
+  if (text.includes(TUNISIA_ARABIC)) return true;
+  if (TUNISIA_LATIN_FUZZY.test(text)) return true;
+  if (TUNISIA_ARABIC_FUZZY.test(text)) return true;
+  return false;
+}
+
+// ─── Tunisian plate patterns (with OCR error tolerance) ──────────────────────
+// Tunisian plates: "123 TN 4567" or "123 تونس 4567" or "RS 1234" (code + number)
+const TN_EXACT_ARABIC = /(\d{1,4})\s*تونس\s*(\d{1,4})/;
+const TN_EXACT_LATIN = /(\d{1,4})\s*(?:TUNIS|TUNI|TONI|TONS|TUNS|TN|T\.N\.?)\s*(\d{1,4})/i;
+const TN_CODE_NUMBER = /\b([A-Z]{2,3})\s*(\d{1,4})\b/;
+const TN_NUMBER_CODE = /\b(\d{1,4})\s*([A-Z]{2,3})\b/;
+const EU_STANDARD = /\b([A-Z]{1,3})[- ](\d{2,4})[- ]([A-Z]{1,3})\b/;
+
 function extractPlate(raw: string): string {
   const normalized = normalizeArabicNumerals(raw);
   const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
+  const allText = lines.join(' ');
 
-  // Try to find plate in each line
-  for (const line of lines) {
-    const cleaned = line.replace(/[^A-Z0-9\u0600-\u06FF\s-]/gi, ' ').replace(/\s+/g, ' ').trim();
+  // Helper: try to extract from a text block
+  function tryExtract(text: string): string {
+    const cleaned = text.replace(/[^A-Z0-9\u0600-\u06FF\s.-]/gi, ' ').replace(/\s+/g, ' ').trim();
 
-    // Priority 1: Tunisian Arabic format: 123 تونس 4567
-    const mAr = cleaned.match(TN_ARABIC);
+    // Priority 1: Exact Arabic format: 123 تونس 4567
+    const mAr = cleaned.match(TN_EXACT_ARABIC);
     if (mAr) return `${mAr[1]} TN ${mAr[2]}`;
 
-    // Priority 2: Tunisian latin format: 123 TUN/TN 4567
-    const m1 = cleaned.match(TN_LATIN_OLD);
-    if (m1) return `${m1[1]} TN ${m1[3]}`.toUpperCase();
+    // Priority 2: Exact Latin format: 123 TUN/TN 4567
+    const mLat = cleaned.match(TN_EXACT_LATIN);
+    if (mLat) return `${mLat[1]} TN ${mLat[2]}`;
 
-    // Priority 3: Tunisian code format: 123 ABC 4567
-    const mCode = cleaned.match(TN_CODE_NUMBER);
-    if (mCode) return `${mCode[1]} ${mCode[2]} ${mCode[3]}`.toUpperCase();
+    // Priority 3: Tunisian code+number with Tunisia marker nearby: RS 1234 + "تونس"/"TUNIS"
+    if (hasTunisiaMarker(text)) {
+      const mCode = cleaned.match(TN_CODE_NUMBER);
+      if (mCode) return `${mCode[1]} ${mCode[2]}`.toUpperCase();
+      const mNumCode = cleaned.match(TN_NUMBER_CODE);
+      if (mNumCode) return `${mNumCode[2]} ${mNumCode[1]}`.toUpperCase();
+    }
 
-    // Priority 4: EU standard: AA-123-AA
-    const m3 = cleaned.match(EU_STANDARD);
-    if (m3) return `${m3[1]}-${m3[2]}-${m3[3]}`.toUpperCase();
+    // Priority 4: EU standard: AA-123-AA (only if has Tunisia marker)
+    if (hasTunisiaMarker(text)) {
+      const mEu = cleaned.match(EU_STANDARD);
+      if (mEu) return `${mEu[1]}-${mEu[2]}-${mEu[3]}`.toUpperCase();
+    }
 
-    // Priority 5: Tunisian new format: RS 1234
-    const m2 = cleaned.match(TN_LATIN_NEW);
-    if (m2 && m2[1].length >= 2 && parseInt(m2[2]) > 0)
-      return `${m2[1].toUpperCase()} ${m2[2]}`;
+    // Priority 5: Code+number without marker (weak, only if 2-3 letter code + 1-4 digits)
+    const mCodeWeak = cleaned.match(TN_CODE_NUMBER);
+    if (mCodeWeak && mCodeWeak[1].length >= 2 && /^\d{1,4}$/.test(mCodeWeak[2]))
+      return `${mCodeWeak[1]} ${mCodeWeak[2]}`.toUpperCase();
+
+    return '';
   }
 
-  // Try full text if no line matched
-  const fullText = normalized.replace(/[^A-Z0-9\u0600-\u06FF\s-]/gi, ' ').replace(/\s+/g, ' ').trim();
+  // Try each line first
+  for (const line of lines) {
+    const result = tryExtract(line);
+    if (result) return result;
+  }
 
-  const mAr = fullText.match(TN_ARABIC);
-  if (mAr) return `${mAr[1]} TN ${mAr[2]}`;
+  // Try full text
+  const fullResult = tryExtract(allText);
+  if (fullResult) return fullResult;
 
-  const m1 = fullText.match(TN_LATIN_OLD);
-  if (m1) return `${m1[1]} TN ${m1[3]}`.toUpperCase();
+  // Last resort: extract longest digit sequences and letter sequences
+  const digits = allText.match(/\d{2,5}/g) || [];
+  const letters = allText.match(/[A-Z]{2,3}/gi) || [];
+  const firstLetter = letters[0];
+  const firstDigit = digits[0];
+  if (firstDigit && firstLetter) {
+    return `${firstLetter.toUpperCase()} ${firstDigit}`;
+  }
+  if (firstDigit) return firstDigit;
 
-  const mCode = fullText.match(TN_CODE_NUMBER);
-  if (mCode) return `${mCode[1]} ${mCode[2]} ${mCode[3]}`.toUpperCase();
-
-  const m3 = fullText.match(EU_STANDARD);
-  if (m3) return `${m3[1]}-${m3[2]}-${m3[3]}`.toUpperCase();
-
-  const m2 = fullText.match(TN_LATIN_NEW);
-  if (m2 && m2[1].length >= 2 && parseInt(m2[2]) > 0)
-    return `${m2[1].toUpperCase()} ${m2[2]}`;
-
-  // Fallback: longest alphanumeric sequence
-  const tokens = normalized.replace(/[^A-Z0-9\s]/gi, ' ').split(/\s+/).filter(t => t.length >= 2);
-  return tokens.length ? tokens.join(' ').toUpperCase() : '';
+  return '';
 }
 
-// ─── Adaptive binarization preprocessing ─────────────────────────────────────
-function preprocessImage(dataUrl: string): Promise<string> {
-  return new Promise((resolve) => {
+// ─── Image preprocessing pipeline ────────────────────────────────────────────
+// Returns multiple preprocessed versions for OCR to try
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return resolve(dataUrl);
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
 
-      ctx.drawImage(img, 0, 0, w, h);
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const data = imageData.data;
-      const gray = new Uint8Array(w * h);
+function imageToCanvas(img: HTMLImageElement, maxDim = 1600): HTMLCanvasElement {
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas;
+}
 
-      for (let i = 0; i < gray.length; i++) {
-        const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
-        gray[i] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-      }
+function toGrayscale(data: Uint8ClampedArray, w: number, h: number): Uint8Array {
+  const gray = new Uint8Array(w * h);
+  for (let i = 0; i < gray.length; i++) {
+    const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+    gray[i] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+  }
+  return gray;
+}
 
-      const R = 15;
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const idx = y * w + x;
-          let sum = 0, count = 0;
-          for (let dy = -R; dy <= R; dy++) {
-            const ny = y + dy;
-            if (ny < 0 || ny >= h) continue;
-            for (let dx = -R; dx <= R; dx++) {
-              const nx = x + dx;
-              if (nx < 0 || nx >= w) continue;
-              sum += gray[ny * w + nx];
-              count++;
-            }
-          }
-          const threshold = (count ? sum / count : 128) - 5;
-          const val = gray[idx] > threshold ? 255 : 0;
-          data[idx * 4] = val;
-          data[idx * 4 + 1] = val;
-          data[idx * 4 + 2] = val;
+function applyCLAHE(gray: Uint8Array, w: number, h: number, clipLimit = 3): Uint8Array {
+  // Simplified CLAHE: contrast-limited adaptive histogram equalization
+  const blockSize = 32;
+  const result = new Uint8Array(gray.length);
+
+  for (let by = 0; by < h; by += blockSize) {
+    for (let bx = 0; bx < w; bx += blockSize) {
+      const endY = Math.min(by + blockSize, h);
+      const endX = Math.min(bx + blockSize, w);
+
+      // Build histogram for this block
+      const hist = new Uint32Array(256);
+      for (let y = by; y < endY; y++) {
+        for (let x = bx; x < endX; x++) {
+          hist[gray[y * w + x]]++;
         }
       }
 
-      ctx.putImageData(imageData, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
+      // Clip histogram
+      const numPixels = (endY - by) * (endX - bx);
+      const limit = Math.max(1, Math.floor(numPixels * clipLimit / 256));
+      let excess = 0;
+      for (let i = 0; i < 256; i++) {
+        if (hist[i] > limit) {
+          excess += hist[i] - limit;
+          hist[i] = limit;
+        }
+      }
+      const redist = Math.floor(excess / 256);
+      for (let i = 0; i < 256; i++) {
+        hist[i] += redist;
+      }
+
+      // Build CDF
+      const cdf = new Float32Array(256);
+      cdf[0] = hist[0];
+      for (let i = 1; i < 256; i++) cdf[i] = cdf[i - 1] + hist[i];
+      const cdfMin = cdf.find(v => v > 0) || 0;
+      const range = numPixels - cdfMin || 1;
+
+      // Apply
+      for (let y = by; y < endY; y++) {
+        for (let x = bx; x < endX; x++) {
+          result[y * w + x] = Math.round(((cdf[gray[y * w + x]] - cdfMin) / range) * 255);
+        }
+      }
+    }
+  }
+  return result;
 }
 
-// ─── Helper: Run OCR on full image ────────────────────────────────────────────
-async function runFullOCR(processedImage: string): Promise<string> {
-  // Try French first (best for Tunisian plates with both scripts)
-  const workerFra = await createWorker('fra', 1);
-  await workerFra.setParameters({
-    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -تونس',
-  });
-  const { data: dataFra } = await workerFra.recognize(processedImage);
-  await workerFra.terminate();
+function applyAdaptiveThreshold(gray: Uint8Array, w: number, h: number, R = 12): Uint8Array {
+  const result = new Uint8Array(gray.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0, count = 0;
+      for (let dy = -R; dy <= R; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) continue;
+        for (let dx = -R; dx <= R; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= w) continue;
+          sum += gray[ny * w + nx];
+          count++;
+        }
+      }
+      const threshold = (count ? sum / count : 128) - 8;
+      result[y * w + x] = gray[y * w + x] > threshold ? 255 : 0;
+    }
+  }
+  return result;
+}
 
-  let plate = extractPlate(dataFra.text);
+function grayscaleToCanvas(gray: Uint8Array, w: number, h: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const imageData = ctx.createImageData(w, h);
+  for (let i = 0; i < gray.length; i++) {
+    imageData.data[i * 4] = gray[i];
+    imageData.data[i * 4 + 1] = gray[i];
+    imageData.data[i * 4 + 2] = gray[i];
+    imageData.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+// Generates multiple preprocessed variants for OCR
+async function preprocessVariants(src: string): Promise<string[]> {
+  const img = await loadImage(src);
+  const canvas = imageToCanvas(img, 1600);
+  const ctx = canvas.getContext('2d')!;
+  const w = canvas.width, h = canvas.height;
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const gray = toGrayscale(imageData.data, w, h);
+  const variants: string[] = [];
+
+  // Variant 1: Original (upscaled, RGB)
+  variants.push(canvas.toDataURL('image/png'));
+
+  // Variant 2: Grayscale
+  variants.push(grayscaleToCanvas(gray, w, h).toDataURL('image/png'));
+
+  // Variant 3: CLAHE enhanced
+  const clahe = applyCLAHE(gray, w, h, 3);
+  variants.push(grayscaleToCanvas(clahe, w, h).toDataURL('image/png'));
+
+  // Variant 4: Adaptive threshold (binarization)
+  const binary = applyAdaptiveThreshold(gray, w, h, 12);
+  variants.push(grayscaleToCanvas(binary, w, h).toDataURL('image/png'));
+
+  // Variant 5: CLAHE + adaptive threshold (best for noisy plates)
+  const claheBinary = applyAdaptiveThreshold(clahe, w, h, 8);
+  variants.push(grayscaleToCanvas(claheBinary, w, h).toDataURL('image/png'));
+
+  return variants;
+}
+
+// ─── OCR engine ──────────────────────────────────────────────────────────────
+// Run a single OCR pass
+async function ocrPass(
+  imageData: string,
+  lang: string,
+  psm: number,
+  whitelist?: string
+): Promise<string> {
+  const worker = await createWorker(lang, 1);
+  const params: Record<string, string> = {
+    tessedit_pageseg_mode: String(psm),
+  };
+  if (whitelist) {
+    params.tessedit_char_whitelist = whitelist;
+  }
+  await worker.setParameters(params);
+  const { data } = await worker.recognize(imageData);
+  await worker.terminate();
+  return data.text;
+}
+
+// Dual-pass OCR: English for numbers/Latin + Arabic for تونس
+async function runDualPassOCR(imageData: string): Promise<string> {
+  // Pass 1: English — digits + uppercase letters (plate characters)
+  const engText = await ocrPass(
+    imageData,
+    'eng',
+    7, // PSM 7: single text line
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'
+  );
+
+  // Pass 2: Arabic — get Arabic text (تونس)
+  const araText = await ocrPass(
+    imageData,
+    'ara',
+    7,
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -تونس'
+  );
+
+  // Combine: try to extract plate from English text first
+  let plate = extractPlate(engText);
   if (plate) return plate;
 
-  // Try English
-  const workerEng = await createWorker('eng');
-  const { data: dataEng } = await workerEng.recognize(processedImage);
-  await workerEng.terminate();
-  plate = extractPlate(dataEng.text);
+  // Try Arabic text
+  plate = extractPlate(araText);
   if (plate) return plate;
 
-  // Try Arabic
-  const workerAra = await createWorker('ara');
-  const { data: dataAra } = await workerAra.recognize(processedImage);
-  await workerAra.terminate();
-  plate = extractPlate(dataAra.text);
+  // Try combining both
+  const combined = `${engText}\n${araText}`;
+  plate = extractPlate(combined);
+  if (plate) return plate;
 
-  return plate;
+  // Fallback: try PSM 8 (single word) on each word
+  const words = engText.split(/\s+/).filter(w => w.length >= 2);
+  for (const word of words) {
+    const wordResult = await ocrPass(imageData, 'eng', 8);
+    plate = extractPlate(wordResult);
+    if (plate) return plate;
+  }
+
+  return '';
+}
+
+// Full OCR pipeline: try multiple preprocessing variants with dual-pass
+async function runFullOCR(src: string): Promise<string> {
+  const variants = await preprocessVariants(src);
+
+  for (const variant of variants) {
+    const result = await runDualPassOCR(variant);
+    if (result) return result;
+  }
+  return '';
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -228,7 +389,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
         if (yoloResult.detections.length > 0) {
           setStatusText(`${yoloResult.detections.length} plaque(s) détectée(s) en ${Math.round(yoloResult.inferenceTime)}ms`);
 
-          // Process each detected plate
+          // Process each detected plate with dual-pass OCR + multiple preprocessing
           for (let i = 0; i < yoloResult.detections.length; i++) {
             const det = yoloResult.detections[i];
             setStatusText(`OCR sur plaque ${i + 1}/${yoloResult.detections.length}…`);
@@ -237,52 +398,24 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             const croppedCanvas = cropPlate(img, det.bbox);
             const croppedSrc = croppedCanvas.toDataURL('image/png');
 
-            // Preprocess for better OCR
-            const processed = await preprocessImage(croppedSrc);
-
-            // Try French first (best for Tunisian plates)
-            const workerFra = await createWorker('fra', 1, {
-              logger: (m: { progress: number }) => {
-                if (m.progress) setStatusText(`OCR plaque ${i + 1}… ${Math.round(m.progress * 100)}%`);
-              },
-            });
-            await workerFra.setParameters({
-              tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -تونس',
-            });
-            const { data: dataFra } = await workerFra.recognize(processed);
-            await workerFra.terminate();
-
-            plate = extractPlate(dataFra.text);
-
-            // Try English if French didn't find a plate
-            if (!plate) {
-              const workerEng = await createWorker('eng');
-              const { data: dataEng } = await workerEng.recognize(processed);
-              await workerEng.terminate();
-              plate = extractPlate(dataEng.text);
+            // Run full OCR pipeline: multiple preprocessing variants + dual-pass (eng + ara)
+            const variants = await preprocessVariants(croppedSrc);
+            for (const variant of variants) {
+              plate = await runDualPassOCR(variant);
+              if (plate) break;
             }
 
-            // Try Arabic if still no plate
-            if (!plate) {
-              const workerAra = await createWorker('ara');
-              const { data: dataAra } = await workerAra.recognize(processed);
-              await workerAra.terminate();
-              plate = extractPlate(dataAra.text);
-            }
-
-            if (plate) break; // Stop if we found a plate
+            if (plate) break;
           }
         } else {
           // No plates detected by Roboflow, fallback to full image OCR
           setStatusText('Aucune plaque détectée, essai OCR global…');
-          const processed = await preprocessImage(src);
-          plate = await runFullOCR(processed);
+          plate = await runFullOCR(src);
         }
       } else {
-        // Direct OCR mode (original behavior)
-        setStatusText('Analyse OCR (Français + Arabe + Anglais)…');
-        const processed = await preprocessImage(src);
-        plate = await runFullOCR(processed);
+        // Direct OCR mode — multiple preprocessing + dual-pass
+        setStatusText('Analyse OCR (Arabe + Anglais)…');
+        plate = await runFullOCR(src);
       }
 
       setDetectedPlate(plate);

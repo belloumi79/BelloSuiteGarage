@@ -17,7 +17,7 @@ export interface DetectionResult {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const ROBOFLOW_API_URL = 'https://serverless.roboflow.com/infer/license-plate-recognition-rxg4e/4';
+const ROBOFLOW_API_URL = 'https://serverless.roboflow.com/license-plate-recognition-rxg4e/4';
 const CONFIDENCE_THRESHOLD = 0.45;
 const OVERLAP_THRESHOLD = 0.3;
 

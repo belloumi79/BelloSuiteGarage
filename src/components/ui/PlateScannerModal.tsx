@@ -5,7 +5,6 @@ import { Camera, Upload, ScanLine, X, Check, RefreshCw, Sparkles, AlertCircle, G
 import { createWorker } from 'tesseract.js';
 import { useToast } from '@/components/ui/Toast';
 import { detectPlates, cropPlate, type PlateDetection } from '@/lib/roboflowDetection';
-import { runTransformersOCR } from '@/lib/transformersOCR';
 
 interface PlateScannerModalProps {
   open: boolean;
@@ -336,16 +335,11 @@ async function runDualPassOCR(imageData: string): Promise<string> {
 
 // ─── Full OCR pipeline ───────────────────────────────────────────────────────
 async function runFullOCR(src: string): Promise<string> {
-  // 1. Try Transformers.js (TrOCR, browser-based, best for printed text)
-  const trResult = await runTransformersOCR(src);
-  const trPlate = extractPlate(trResult);
-  if (trPlate) return trPlate;
-
-  // 2. Try PaddleOCR if server is running
+  // 1. Try PaddleOCR if server is running
   const paddleResult = await runPaddleOCR(src);
   if (paddleResult) return paddleResult;
 
-  // 3. Fallback: Tesseract.js with multiple preprocessing variants
+  // 2. Fallback: Tesseract.js with multiple preprocessing variants
   const variants = await preprocessVariants(src);
   for (const variant of variants) {
     const result = await runDualPassOCR(variant);
@@ -412,7 +406,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
         if (yoloResult.detections.length > 0) {
           setStatusText(`${yoloResult.detections.length} plaque(s) détectée(s) en ${Math.round(yoloResult.inferenceTime)}ms`);
 
-          // Process each detected plate — Transformers.js first, then PaddleOCR, then Tesseract
+          // Process each detected plate — PaddleOCR first, then Tesseract
           for (let i = 0; i < yoloResult.detections.length; i++) {
             const det = yoloResult.detections[i];
             setStatusText(`OCR sur plaque ${i + 1}/${yoloResult.detections.length}…`);
@@ -421,16 +415,9 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             const croppedCanvas = cropPlate(img, det.bbox);
             const croppedSrc = croppedCanvas.toDataURL('image/png');
 
-            // Try Transformers.js first (browser-based TrOCR)
-            setStatusText(`Transformers.js OCR plaque ${i + 1}…`);
-            const trText = await runTransformersOCR(croppedSrc);
-            plate = extractPlate(trText);
-
-            // Try PaddleOCR if available
-            if (!plate) {
-              setStatusText(`PaddleOCR plaque ${i + 1}…`);
-              plate = await runPaddleOCR(croppedSrc);
-            }
+            // Try PaddleOCR first
+            setStatusText(`PaddleOCR plaque ${i + 1}…`);
+            plate = await runPaddleOCR(croppedSrc);
 
             // Fallback: Tesseract dual-pass with preprocessing variants
             if (!plate) {

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // ─── PaddleOCR Proxy ──────────────────────────────────────────────────────────
-// Forwards image to local PaddleOCR Python server (localhost:5000)
+// Forwards image to PaddleOCR server on Render
 // Falls back gracefully if server is not running
-
-const PADDLE_OCR_URL = process.env.PADDLE_OCR_URL || 'http://localhost:5000';
 
 // ─── POST /api/ocr/paddle ─────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
@@ -16,30 +14,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File is required' }, { status: 400 });
     }
 
+    const paddleUrl = process.env.PADDLE_OCR_URL;
+    if (!paddleUrl) {
+      return NextResponse.json({ text: '', detections: [], fallback: true });
+    }
+
     // Forward to PaddleOCR server
     const paddleForm = new FormData();
     paddleForm.append('file', file, file.name || 'plate.jpg');
 
-    const response = await fetch(`${PADDLE_OCR_URL}/ocr`, {
+    const response = await fetch(`${paddleUrl}/ocr`, {
       method: 'POST',
       body: paddleForm,
-      signal: AbortSignal.timeout(15000), // 15s timeout
+      signal: AbortSignal.timeout(30000), // 30s for cold starts
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('PaddleOCR error:', errorText);
-      return NextResponse.json(
-        { error: `PaddleOCR error: ${errorText}` },
-        { status: response.status }
-      );
+      console.error('PaddleOCR error:', response.status);
+      return NextResponse.json({ text: '', detections: [], fallback: true });
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    // PaddleOCR server not running — return empty (client falls back to Tesseract)
-    console.warn('PaddleOCR not available, falling back to Tesseract:', (error as Error).message);
+    console.warn('PaddleOCR not available:', (error as Error).message);
     return NextResponse.json({ text: '', detections: [], fallback: true });
   }
 }

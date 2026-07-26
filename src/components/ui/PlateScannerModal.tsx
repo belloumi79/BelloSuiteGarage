@@ -12,9 +12,14 @@ interface PlateScannerModalProps {
 }
 
 // ─── Tunisian plate patterns ──────────────────────────────────────────────────
+// Format exact: Y تونس X (number + Arabic "تونس" + number)
+// e.g. "123 تونس 4567" → "123 TN 4567"
+const TN_ARABIC = /(\d{1,4})\s*تونس\s*(\d{1,4})/;
 const TN_LATIN_OLD = /(\d{1,4})\s*(TUN|TUNIS|TN)\s*(\d{1,4})/i;
-const TN_LATIN_NEW = /\b([A-Z]{1,3})\s*(\d{1,4})\b/i;
+const TN_LATIN_NEW = /\b([A-Z]{2,3})\s*(\d{1,4})\b/i;
+const TN_CODE_NUMBER = /\b(\d{1,3})\s*([A-Z]{2,3})\s*(\d{1,4})\b/i;
 const EU_STANDARD  = /\b([A-Z]{1,3})[- ](\d{2,4})[- ]([A-Z]{1,3})\b/i;
+const GENERIC_PLATE = /\b[A-Z0-9]{1,4}[- ]?[A-Z0-9]{1,4}[- ]?[A-Z0-9]{0,4}\b/i;
 
 // Arabic-Indic digit mapping
 const AR_TO_EN: Record<string, string> = {
@@ -30,19 +35,50 @@ function extractPlate(raw: string): string {
   const normalized = normalizeArabicNumerals(raw);
   const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
 
+  // Try to find plate in each line
   for (const line of lines) {
-    const cleaned = line.replace(/[^A-Z0-9\s-]/gi, ' ').replace(/\s+/g, ' ').trim();
+    const cleaned = line.replace(/[^A-Z0-9\u0600-\u06FF\s-]/gi, ' ').replace(/\s+/g, ' ').trim();
 
+    // Priority 1: Tunisian Arabic format: 123 تونس 4567
+    const mAr = cleaned.match(TN_ARABIC);
+    if (mAr) return `${mAr[1]} TN ${mAr[2]}`;
+
+    // Priority 2: Tunisian latin format: 123 TUN/TN 4567
     const m1 = cleaned.match(TN_LATIN_OLD);
     if (m1) return `${m1[1]} TN ${m1[3]}`.toUpperCase();
 
+    // Priority 3: Tunisian code format: 123 ABC 4567
+    const mCode = cleaned.match(TN_CODE_NUMBER);
+    if (mCode) return `${mCode[1]} ${mCode[2]} ${mCode[3]}`.toUpperCase();
+
+    // Priority 4: EU standard: AA-123-AA
     const m3 = cleaned.match(EU_STANDARD);
     if (m3) return `${m3[1]}-${m3[2]}-${m3[3]}`.toUpperCase();
 
+    // Priority 5: Tunisian new format: RS 1234
     const m2 = cleaned.match(TN_LATIN_NEW);
-    if (m2 && m2[1].length <= 3 && parseInt(m2[2]) > 0)
+    if (m2 && m2[1].length >= 2 && parseInt(m2[2]) > 0)
       return `${m2[1].toUpperCase()} ${m2[2]}`;
   }
+
+  // Try full text if no line matched
+  const fullText = normalized.replace(/[^A-Z0-9\u0600-\u06FF\s-]/gi, ' ').replace(/\s+/g, ' ').trim();
+
+  const mAr = fullText.match(TN_ARABIC);
+  if (mAr) return `${mAr[1]} TN ${mAr[2]}`;
+
+  const m1 = fullText.match(TN_LATIN_OLD);
+  if (m1) return `${m1[1]} TN ${m1[3]}`.toUpperCase();
+
+  const mCode = fullText.match(TN_CODE_NUMBER);
+  if (mCode) return `${mCode[1]} ${mCode[2]} ${mCode[3]}`.toUpperCase();
+
+  const m3 = fullText.match(EU_STANDARD);
+  if (m3) return `${m3[1]}-${m3[2]}-${m3[3]}`.toUpperCase();
+
+  const m2 = fullText.match(TN_LATIN_NEW);
+  if (m2 && m2[1].length >= 2 && parseInt(m2[2]) > 0)
+    return `${m2[1].toUpperCase()} ${m2[2]}`;
 
   // Fallback: longest alphanumeric sequence
   const tokens = normalized.replace(/[^A-Z0-9\s]/gi, ' ').split(/\s+/).filter(t => t.length >= 2);
@@ -141,21 +177,32 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
     setStatusText("Prétraitement de l'image…");
     try {
       const processed = await preprocessImage(src);
-      setStatusText('Analyse OCR (Anglais + Arabe)…');
+      setStatusText('Analyse OCR (Français + Arabe + Anglais)…');
 
-      const workerEng = await createWorker('eng', 1, {
+      // Try French first (best for Tunisian plates with both scripts)
+      const workerFra = await createWorker('fra', 1, {
         logger: (m: { progress: number }) => {
           if (m.progress) setStatusText(`Analyse… ${Math.round(m.progress * 100)}%`);
         },
       });
-      await workerEng.setParameters({
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -',
+      await workerFra.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -تونس',
       });
-      const { data: dataEng } = await workerEng.recognize(processed);
-      await workerEng.terminate();
+      const { data: dataFra } = await workerFra.recognize(processed);
+      await workerFra.terminate();
 
-      let plate = extractPlate(dataEng.text);
+      let plate = extractPlate(dataFra.text);
 
+      // Try English if French didn't find a plate
+      if (!plate) {
+        setStatusText('Essai avec OCR anglais…');
+        const workerEng = await createWorker('eng');
+        const { data: dataEng } = await workerEng.recognize(processed);
+        await workerEng.terminate();
+        plate = extractPlate(dataEng.text);
+      }
+
+      // Try Arabic if still no plate
       if (!plate) {
         setStatusText('Essai avec OCR arabe…');
         const workerAra = await createWorker('ara');
@@ -310,6 +357,15 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
                 <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-4">
                   <Sparkles className="w-8 h-8 text-blue-400 animate-spin" />
                   <p className="text-xs font-semibold text-slate-200 text-center">{statusText}</p>
+                </div>
+              )}
+              {!scanning && (
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <label className="p-2 bg-blue-600/90 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-lg transition cursor-pointer">
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Changer la photo
+                    <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                  </label>
                 </div>
               )}
             </div>

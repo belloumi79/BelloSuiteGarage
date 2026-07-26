@@ -30,7 +30,7 @@ function getApiKey(): string {
   return key;
 }
 
-// ─── Convert image to base64 ──────────────────────────────────────────────────
+// ─── Convert image to base64 with data URL prefix ─────────────────────────────
 function imageToBase64(source: HTMLImageElement | HTMLCanvasElement): string {
   const canvas = document.createElement('canvas');
 
@@ -46,7 +46,8 @@ function imageToBase64(source: HTMLImageElement | HTMLCanvasElement): string {
   if (!ctx) throw new Error('Cannot create canvas context');
 
   ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+  // Return full data URL (with prefix) for Roboflow API
+  return canvas.toDataURL('image/jpeg', 0.92);
 }
 
 // ─── Main detection function ──────────────────────────────────────────────────
@@ -71,12 +72,12 @@ export async function detectPlates(
   const response = await fetch(`${ROBOFLOW_API_URL}?api_key=${apiKey}`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
     },
-    body: new URLSearchParams({
+    body: JSON.stringify({
       image: base64Image,
-      confidence: String(CONFIDENCE_THRESHOLD),
-      overlap: String(OVERLAP_THRESHOLD),
+      confidence: CONFIDENCE_THRESHOLD,
+      overlap: OVERLAP_THRESHOLD,
     }),
   });
 

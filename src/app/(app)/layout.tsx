@@ -5,8 +5,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Wrench } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
-import Sidebar from './Sidebar';
 import ClientLayout from './ClientLayout';
+import AppShell from './AppShell';
 
 export default async function AppLayout({
   children,
@@ -39,12 +39,9 @@ export default async function AppLayout({
 
   if (ctx) {
     return (
-      <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
-        <Sidebar isSuperAdmin={isSuperAdmin} />
-        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-950 relative">
-          <ClientLayout>{children}</ClientLayout>
-        </main>
-      </div>
+      <AppShell isSuperAdmin={isSuperAdmin}>
+        <ClientLayout>{children}</ClientLayout>
+      </AppShell>
     );
   }
 

@@ -124,14 +124,14 @@ export default function ClientsPage() {
 
   return (
     <>
-      <header className="p-6 border-b border-slate-800 flex justify-between items-center no-print bg-slate-900/40 backdrop-blur-md sticky top-0 z-10">
+      <header className="px-4 py-4 sm:px-6 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 no-print bg-slate-900/40 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold capitalize bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
+          <h2 className="text-lg sm:text-xl font-bold capitalize bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
             Clients
           </h2>
           <button
             onClick={loadData}
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 transition"
+            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 transition touch-target"
             title="Actualiser les données"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -148,10 +148,10 @@ export default function ClientsPage() {
         </div>
       )}
 
-      <div className="p-6 space-y-6 no-print">
-        <div className="space-y-6">
-          <div className="flex justify-between items-center gap-4">
-            <div className="relative flex-1 max-w-md flex items-center gap-2">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 no-print">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+            <div className="relative flex-1 sm:max-w-md flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
@@ -159,7 +159,7 @@ export default function ClientsPage() {
                   placeholder="Rechercher un client (nom, tél, société...)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200 input-touch"
                 />
               </div>
               <VoiceInputButton
@@ -169,14 +169,16 @@ export default function ClientsPage() {
             </div>
             <button
               onClick={() => setIsClientModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-slate-100 font-medium px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition"
+              className="bg-blue-600 hover:bg-blue-700 text-slate-100 font-medium px-4 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition touch-target"
             >
               <Plus className="w-4 h-4" />
-              Nouveau Client
+              <span className="hidden sm:inline">Nouveau Client</span>
+              <span className="sm:hidden">Nouveau</span>
             </button>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden">
+          {/* Desktop Table */}
+          <div className="hidden sm:block bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 font-medium bg-slate-900/50">
@@ -208,7 +210,7 @@ export default function ClientsPage() {
                         <td className="p-4 text-right flex justify-end gap-2">
                           <button
                             onClick={() => {}}
-                            className="p-2 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-slate-300 transition"
+                            className="p-2 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-slate-300 transition touch-target-sm"
                             title="Fiche Client"
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -232,14 +234,14 @@ export default function ClientsPage() {
                               });
                               setIsClientModalOpen(true);
                             }}
-                            className="p-2 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-slate-300 transition"
+                            className="p-2 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-slate-300 transition touch-target-sm"
                             title="Modifier"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setConfirmDelete({ id: client.id, name: displayName })}
-                            className="p-2 bg-red-600/10 hover:bg-red-600/20 rounded-lg text-red-400 transition"
+                            className="p-2 bg-red-600/10 hover:bg-red-600/20 rounded-lg text-red-400 transition touch-target-sm"
                             title="Supprimer"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -251,12 +253,77 @@ export default function ClientsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Cards */}
+          <div className="sm:hidden space-y-3">
+            {clients
+              .filter(c => {
+                const name = c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Client';
+                return name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (c.phone && c.phone.includes(debouncedSearch));
+              })
+              .map(client => {
+                const displayName = client.company_name
+                  ? `${client.company_name} (Soc.)`
+                  : `${client.civility || ''} ${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client sans nom';
+                return (
+                  <div key={client.id} className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-slate-200 text-sm truncate">{displayName}</h3>
+                        <p className="text-xs text-slate-400 font-mono">{client.phone}</p>
+                      </div>
+                      <span className="text-xs text-slate-500 bg-slate-800/50 px-2 py-1 rounded-lg">{Number(client.discount_percent)}%</span>
+                    </div>
+                    {client.email && (
+                      <p className="text-xs text-slate-400 truncate">{client.email}</p>
+                    )}
+                    {(client.address_line1 || client.city) && (
+                      <p className="text-xs text-slate-500 truncate">{client.address_line1}{client.city ? `, ${client.city}` : ''}</p>
+                    )}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                      <button
+                        onClick={() => {
+                          setEditingClient(client);
+                          setClientForm({
+                            type: client.type,
+                            civility: client.civility || '',
+                            first_name: client.first_name || '',
+                            last_name: client.last_name || '',
+                            company_name: client.company_name || '',
+                            email: client.email || '',
+                            phone: client.phone || '',
+                            address_line1: client.address_line1 || '',
+                            city: client.city || '',
+                            tax_id: client.tax_id || '',
+                            payment_terms_days: client.payment_terms_days ?? 30,
+                            discount_percent: client.discount_percent
+                          });
+                          setIsClientModalOpen(true);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-xl text-slate-300 text-xs font-medium transition touch-target"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ id: client.id, name: displayName })}
+                        className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-red-600/10 hover:bg-red-600/20 rounded-xl text-red-400 text-xs font-medium transition touch-target"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-4 pt-4">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition"
+                className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition touch-target"
               >
                 &larr; Précédent
               </button>
@@ -264,7 +331,7 @@ export default function ClientsPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition"
+                className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 transition touch-target"
               >
                 Suivant &rarr;
               </button>
@@ -274,31 +341,31 @@ export default function ClientsPage() {
       </div>
 
       {isClientModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-slate-800 flex justify-between items-center">
-              <h3 className="text-base font-bold text-slate-200">{editingClient ? 'Modifier le client' : 'Créer un nouveau client'}</h3>
-              <button onClick={() => { setIsClientModalOpen(false); resetClientForm(); }} className="text-slate-400 hover:text-slate-200">&times;</button>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
+              <h3 className="text-sm sm:text-base font-bold text-slate-200">{editingClient ? 'Modifier le client' : 'Créer un nouveau client'}</h3>
+              <button onClick={() => { setIsClientModalOpen(false); resetClientForm(); }} className="text-slate-400 hover:text-slate-200 touch-target p-1">&times;</button>
             </div>
-            <form onSubmit={handleClientSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleClientSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Type de Client</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Type de Client</label>
                   <select
                     value={clientForm.type}
                     onChange={(e) => setClientForm(prev => ({ ...prev, type: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                   >
                     <option value="individual">Particulier</option>
                     <option value="company">Entreprise / Société</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Civilité</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Civilité</label>
                   <select
                     value={clientForm.civility}
                     onChange={(e) => setClientForm(prev => ({ ...prev, civility: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                     disabled={clientForm.type === 'company'}
                   >
                     <option value="M.">M.</option>
@@ -310,42 +377,42 @@ export default function ClientsPage() {
 
               {clientForm.type === 'company' ? (
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Nom de l&apos;entreprise</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Nom de l&apos;entreprise</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       required
                       value={clientForm.company_name}
                       onChange={(e) => setClientForm(prev => ({ ...prev, company_name: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                     />
                     <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, company_name: txt }))} />
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Prénom</label>
+                    <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Prénom</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         required
                         value={clientForm.first_name}
                         onChange={(e) => setClientForm(prev => ({ ...prev, first_name: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                       />
                       <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, first_name: txt }))} />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Nom de famille</label>
+                    <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Nom de famille</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         required
                         value={clientForm.last_name}
                         onChange={(e) => setClientForm(prev => ({ ...prev, last_name: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                       />
                       <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, last_name: txt }))} />
                     </div>
@@ -353,91 +420,91 @@ export default function ClientsPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Téléphone</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Téléphone</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       required
                       value={clientForm.phone}
                       onChange={(e) => setClientForm(prev => ({ ...prev, phone: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                     />
                     <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, phone: txt }))} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">E-mail</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">E-mail</label>
                   <input
                     type="email"
                     value={clientForm.email}
                     onChange={(e) => setClientForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Adresse</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Adresse</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={clientForm.address_line1}
                       onChange={(e) => setClientForm(prev => ({ ...prev, address_line1: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                     />
                     <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, address_line1: txt }))} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Ville</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Ville</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={clientForm.city}
                       onChange={(e) => setClientForm(prev => ({ ...prev, city: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                     />
                     <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, city: txt }))} />
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Mat. Fiscal (M.F.)</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Mat. Fiscal (M.F.)</label>
                   <input
                     type="text"
                     value={clientForm.tax_id}
                     onChange={(e) => setClientForm(prev => ({ ...prev, tax_id: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Délai Paiement (jours)</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Délai Paiement (jours)</label>
                   <input
                     type="number"
                     value={clientForm.payment_terms_days}
                     onChange={(e) => setClientForm(prev => ({ ...prev, payment_terms_days: Number(e.target.value) }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1">Remise (%)</label>
+                  <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Remise (%)</label>
                   <input
                     type="number"
                     value={clientForm.discount_percent}
                     onChange={(e) => setClientForm(prev => ({ ...prev, discount_percent: Number(e.target.value) }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => { setIsClientModalOpen(false); resetClientForm(); }} className="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Annuler</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold">{editingClient ? 'Enregistrer' : 'Créer le client'}</button>
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800 sticky bottom-0 bg-slate-900 py-3 -mx-4 sm:-mx-6 px-4 sm:px-6">
+                <button type="button" onClick={() => { setIsClientModalOpen(false); resetClientForm(); }} className="px-4 py-2.5 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 touch-target">Annuler</button>
+                <button type="submit" className="px-4 py-2.5 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold touch-target">{editingClient ? 'Enregistrer' : 'Créer le client'}</button>
               </div>
             </form>
           </div>

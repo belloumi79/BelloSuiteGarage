@@ -278,16 +278,16 @@ async function ocrPass(
   return data.text;
 }
 
-// ─── PaddleOCR (free, best for Arabic) ───────────────────────────────────────
-// Calls a local PaddleOCR server — if available
-async function runPaddleOCR(src: string): Promise<string> {
+// ─── EasyOCR (free, best for Arabic) ─────────────────────────────────────────
+// Calls EasyOCR server on Render
+async function runEasyOCR(src: string): Promise<string> {
   try {
     const res = await fetch(src);
     const blob = await res.blob();
     const formData = new FormData();
     formData.append('file', blob, 'plate.jpg');
 
-    const response = await fetch('/api/ocr/paddle', { method: 'POST', body: formData });
+    const response = await fetch('/api/ocr/easyocr', { method: 'POST', body: formData });
     if (!response.ok) return '';
     const data = await response.json();
     const text: string = data.text || '';
@@ -336,7 +336,7 @@ async function runDualPassOCR(imageData: string): Promise<string> {
 // ─── Full OCR pipeline ───────────────────────────────────────────────────────
 async function runFullOCR(src: string): Promise<string> {
   // 1. Try PaddleOCR if server is running
-  const paddleResult = await runPaddleOCR(src);
+  const paddleResult = await runEasyOCR(src);
   if (paddleResult) return paddleResult;
 
   // 2. Fallback: Tesseract.js with multiple preprocessing variants
@@ -417,7 +417,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
 
             // Try PaddleOCR first
             setStatusText(`PaddleOCR plaque ${i + 1}…`);
-            plate = await runPaddleOCR(croppedSrc);
+            plate = await runEasyOCR(croppedSrc);
 
             // Fallback: Tesseract dual-pass with preprocessing variants
             if (!plate) {

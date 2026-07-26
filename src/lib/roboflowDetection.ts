@@ -23,9 +23,9 @@ const OVERLAP_THRESHOLD = 0.3;
 
 // ─── Get API key from environment ─────────────────────────────────────────────
 function getApiKey(): string {
-  const key = process.env.NEXT_PUBLIC_ROBOFLOW_API_KEY || process.env.ROBOFLOW_API_KEY;
+  const key = process.env.NEXT_PUBLIC_ROBOFLOW_API_KEY;
   if (!key) {
-    throw new Error('ROBOFLOW_API_KEY not configured. Add it to .env.local');
+    throw new Error('NEXT_PUBLIC_ROBOFLOW_API_KEY not configured. Add it to .env.local');
   }
   return key;
 }

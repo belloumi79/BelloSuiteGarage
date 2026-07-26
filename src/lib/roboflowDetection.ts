@@ -17,7 +17,8 @@ export interface DetectionResult {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const ROBOFLOW_API_URL = 'https://serverless.roboflow.com/license-plate-recognition-rxg4e/4';
+// API route proxied through Next.js to avoid CORS
+const ROBOFLOW_API_URL = '/api/roboflow';
 const CONFIDENCE_THRESHOLD = 0.45;
 const OVERLAP_THRESHOLD = 0.3;
 
@@ -67,9 +68,8 @@ export async function detectPlates(
   // Convert to base64
   const base64Image = imageToBase64(imageSource);
 
-  // Call Roboflow API
-  const apiKey = getApiKey();
-  const response = await fetch(`${ROBOFLOW_API_URL}?api_key=${apiKey}`, {
+  // Call our proxy API (no CORS issues)
+  const response = await fetch(ROBOFLOW_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

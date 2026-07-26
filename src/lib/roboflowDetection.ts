@@ -22,15 +22,6 @@ const ROBOFLOW_API_URL = '/api/roboflow';
 const CONFIDENCE_THRESHOLD = 0.45;
 const OVERLAP_THRESHOLD = 0.3;
 
-// ─── Get API key from environment ─────────────────────────────────────────────
-function getApiKey(): string {
-  const key = process.env.NEXT_PUBLIC_ROBOFLOW_API_KEY;
-  if (!key) {
-    throw new Error('NEXT_PUBLIC_ROBOFLOW_API_KEY not configured. Add it to .env.local');
-  }
-  return key;
-}
-
 // ─── Convert image to base64 with data URL prefix ─────────────────────────────
 function imageToBase64(source: HTMLImageElement | HTMLCanvasElement): string {
   const canvas = document.createElement('canvas');

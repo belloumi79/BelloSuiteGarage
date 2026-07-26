@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // ─── Roboflow API Configuration ───────────────────────────────────────────────
+// Roboflow serverless API requires multipart/form-data with part named 'file'
 const ROBOFLOW_API_URL = 'https://serverless.roboflow.com/license-plate-recognition-rxg4e/4';
 
 // ─── POST /api/roboflow ───────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { image, confidence = 0.45, overlap = 0.3 } = body;
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
 
-    if (!image) {
+    if (!file) {
       return NextResponse.json(
-        { error: 'Image is required' },
+        { error: 'File is required' },
         { status: 400 }
       );
     }
@@ -24,18 +25,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Forward request to Roboflow API (using form-urlencoded)
-    const formData = new URLSearchParams();
-    formData.append('image', image);
-    formData.append('confidence', String(confidence));
-    formData.append('overlap', String(overlap));
+    // Build new FormData to forward to Roboflow
+    const roboflowForm = new FormData();
+    roboflowForm.append('file', file, file.name || 'image.jpg');
+    if (formData.has('confidence')) {
+      roboflowForm.append('confidence', formData.get('confidence') as string);
+    }
+    if (formData.has('overlap')) {
+      roboflowForm.append('overlap', formData.get('overlap') as string);
+    }
 
     const response = await fetch(`${ROBOFLOW_API_URL}?api_key=${apiKey}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString(),
+      body: roboflowForm,
     });
 
     if (!response.ok) {

@@ -1,6 +1,7 @@
 // ─── Roboflow License Plate Detection ─────────────────────────────────────────
 // Uses Roboflow API: license-plate-recognition-rxg4e/4
 // Model: YOLOv8 trained on 10,126 images, 99% mAP
+// Roboflow serverless API requires multipart/form-data with part named 'file'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface PlateDetection {
@@ -17,13 +18,12 @@ export interface DetectionResult {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-// API route proxied through Next.js to avoid CORS
 const ROBOFLOW_API_URL = '/api/roboflow';
 const CONFIDENCE_THRESHOLD = 0.45;
 const OVERLAP_THRESHOLD = 0.3;
 
-// ─── Convert image to base64 (without data URL prefix for Roboflow) ───────────
-function imageToBase64(source: HTMLImageElement | HTMLCanvasElement): string {
+// ─── Convert HTML element to Blob ─────────────────────────────────────────────
+function imageToBlob(source: HTMLImageElement | HTMLCanvasElement): Promise<Blob> {
   const canvas = document.createElement('canvas');
 
   if (source instanceof HTMLImageElement) {
@@ -38,8 +38,17 @@ function imageToBase64(source: HTMLImageElement | HTMLCanvasElement): string {
   if (!ctx) throw new Error('Cannot create canvas context');
 
   ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-  // Return raw base64 (without prefix) for Roboflow API
-  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to create blob from canvas'));
+      },
+      'image/jpeg',
+      0.92
+    );
+  });
 }
 
 // ─── Main detection function ──────────────────────────────────────────────────
@@ -48,7 +57,6 @@ export async function detectPlates(
 ): Promise<DetectionResult> {
   const startTime = performance.now();
 
-  // Get image dimensions
   const imageWidth = imageSource instanceof HTMLImageElement
     ? (imageSource.naturalWidth || imageSource.width)
     : imageSource.width;
@@ -56,20 +64,18 @@ export async function detectPlates(
     ? (imageSource.naturalHeight || imageSource.height)
     : imageSource.height;
 
-  // Convert to base64
-  const base64Image = imageToBase64(imageSource);
+  // Convert to blob for multipart upload
+  const imageBlob = await imageToBlob(imageSource);
 
-  // Call our proxy API (no CORS issues)
+  // Build FormData — Roboflow expects the part to be named 'file'
+  const formData = new FormData();
+  formData.append('file', imageBlob, 'image.jpg');
+  formData.append('confidence', String(CONFIDENCE_THRESHOLD));
+  formData.append('overlap', String(OVERLAP_THRESHOLD));
+
   const response = await fetch(ROBOFLOW_API_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      image: base64Image,
-      confidence: CONFIDENCE_THRESHOLD,
-      overlap: OVERLAP_THRESHOLD,
-    }),
+    body: formData,
   });
 
   if (!response.ok) {
@@ -79,7 +85,6 @@ export async function detectPlates(
 
   const data = await response.json();
 
-  // Transform predictions to our format
   const detections: PlateDetection[] = (data.predictions || [])
     .filter((p: { confidence: number }) => p.confidence >= CONFIDENCE_THRESHOLD)
     .map((pred: {
@@ -145,10 +150,8 @@ export function drawDetections(
   ctx.fillStyle = '#00ff00';
 
   for (const det of detections) {
-    // Draw bounding box
     ctx.strokeRect(det.bbox.x, det.bbox.y, det.bbox.width, det.bbox.height);
 
-    // Draw label
     const label = `Plaque ${(det.confidence * 100).toFixed(1)}%`;
     ctx.fillText(label, det.bbox.x, det.bbox.y - 5);
   }

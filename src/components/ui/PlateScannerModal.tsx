@@ -5,6 +5,7 @@ import { Camera, Upload, ScanLine, X, Check, RefreshCw, Sparkles, AlertCircle, G
 import { createWorker } from 'tesseract.js';
 import { useToast } from '@/components/ui/Toast';
 import { detectPlates, cropPlate, type PlateDetection } from '@/lib/roboflowDetection';
+import { runTransformersOCR } from '@/lib/transformersOCR';
 
 interface PlateScannerModalProps {
   open: boolean;
@@ -278,7 +279,27 @@ async function ocrPass(
   return data.text;
 }
 
-// Dual-pass OCR: English for numbers/Latin + Arabic for تونس
+// ─── PaddleOCR (free, best for Arabic) ───────────────────────────────────────
+// Calls a local PaddleOCR server — if available
+async function runPaddleOCR(src: string): Promise<string> {
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    const formData = new FormData();
+    formData.append('file', blob, 'plate.jpg');
+
+    const response = await fetch('/api/ocr/paddle', { method: 'POST', body: formData });
+    if (!response.ok) return '';
+    const data = await response.json();
+    const text: string = data.text || '';
+    return text ? extractPlate(text) : '';
+  } catch {
+    return '';
+  }
+}
+
+// ─── Dual-pass Tesseract ─────────────────────────────────────────────────────
+// English for numbers/Latin + Arabic for تونس (no whitelist for Arabic)
 async function runDualPassOCR(imageData: string): Promise<string> {
   // Pass 1: English — digits + uppercase letters (plate characters)
   const engText = await ocrPass(
@@ -288,13 +309,9 @@ async function runDualPassOCR(imageData: string): Promise<string> {
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'
   );
 
-  // Pass 2: Arabic — get Arabic text (تونس)
-  const araText = await ocrPass(
-    imageData,
-    'ara',
-    7,
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -تونس'
-  );
+  // Pass 2: Arabic — NO whitelist, let Tesseract use its full Arabic model
+  // PSM 6: assume a single uniform block of text (better for plates)
+  const araText = await ocrPass(imageData, 'ara', 6);
 
   // Combine: try to extract plate from English text first
   let plate = extractPlate(engText);
@@ -309,21 +326,27 @@ async function runDualPassOCR(imageData: string): Promise<string> {
   plate = extractPlate(combined);
   if (plate) return plate;
 
-  // Fallback: try PSM 8 (single word) on each word
-  const words = engText.split(/\s+/).filter(w => w.length >= 2);
-  for (const word of words) {
-    const wordResult = await ocrPass(imageData, 'eng', 8);
-    plate = extractPlate(wordResult);
-    if (plate) return plate;
-  }
+  // Try PSM 13 (raw line) on Arabic
+  const araRaw = await ocrPass(imageData, 'ara', 13);
+  plate = extractPlate(araRaw);
+  if (plate) return plate;
 
   return '';
 }
 
-// Full OCR pipeline: try multiple preprocessing variants with dual-pass
+// ─── Full OCR pipeline ───────────────────────────────────────────────────────
 async function runFullOCR(src: string): Promise<string> {
-  const variants = await preprocessVariants(src);
+  // 1. Try Transformers.js (TrOCR, browser-based, best for printed text)
+  const trResult = await runTransformersOCR(src);
+  const trPlate = extractPlate(trResult);
+  if (trPlate) return trPlate;
 
+  // 2. Try PaddleOCR if server is running
+  const paddleResult = await runPaddleOCR(src);
+  if (paddleResult) return paddleResult;
+
+  // 3. Fallback: Tesseract.js with multiple preprocessing variants
+  const variants = await preprocessVariants(src);
   for (const variant of variants) {
     const result = await runDualPassOCR(variant);
     if (result) return result;
@@ -389,7 +412,7 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
         if (yoloResult.detections.length > 0) {
           setStatusText(`${yoloResult.detections.length} plaque(s) détectée(s) en ${Math.round(yoloResult.inferenceTime)}ms`);
 
-          // Process each detected plate with dual-pass OCR + multiple preprocessing
+          // Process each detected plate — Transformers.js first, then PaddleOCR, then Tesseract
           for (let i = 0; i < yoloResult.detections.length; i++) {
             const det = yoloResult.detections[i];
             setStatusText(`OCR sur plaque ${i + 1}/${yoloResult.detections.length}…`);
@@ -398,11 +421,25 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             const croppedCanvas = cropPlate(img, det.bbox);
             const croppedSrc = croppedCanvas.toDataURL('image/png');
 
-            // Run full OCR pipeline: multiple preprocessing variants + dual-pass (eng + ara)
-            const variants = await preprocessVariants(croppedSrc);
-            for (const variant of variants) {
-              plate = await runDualPassOCR(variant);
-              if (plate) break;
+            // Try Transformers.js first (browser-based TrOCR)
+            setStatusText(`Transformers.js OCR plaque ${i + 1}…`);
+            const trText = await runTransformersOCR(croppedSrc);
+            plate = extractPlate(trText);
+
+            // Try PaddleOCR if available
+            if (!plate) {
+              setStatusText(`PaddleOCR plaque ${i + 1}…`);
+              plate = await runPaddleOCR(croppedSrc);
+            }
+
+            // Fallback: Tesseract dual-pass with preprocessing variants
+            if (!plate) {
+              setStatusText(`Tesseract OCR plaque ${i + 1}…`);
+              const variants = await preprocessVariants(croppedSrc);
+              for (const variant of variants) {
+                plate = await runDualPassOCR(variant);
+                if (plate) break;
+              }
             }
 
             if (plate) break;

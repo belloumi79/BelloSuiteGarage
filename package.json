@@ -16,6 +16,7 @@
     "vercel-build": "if [ -n \"$DATABASE_URL\" ]; then prisma migrate deploy 2>/dev/null || echo 'Skipping DB migration (unreachable — run manually via prisma migrate deploy)'; fi && next build"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@react-pdf/renderer": "^4.5.1",

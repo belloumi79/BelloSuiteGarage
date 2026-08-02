@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import VoiceInputButton from '@/components/ui/VoiceInputButton';
 import type { Document, Client, Vehicle, Item, DocumentLine } from '@/lib/types';
 
 interface DashboardData {
@@ -620,14 +621,20 @@ export default function DocumentsPage() {
       <div className="p-6 space-y-6 no-print">
         <div className="space-y-6">
           <div className="flex justify-between items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Rechercher par N° document, client, immatriculation..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+            <div className="relative flex-1 max-w-md flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par N° document, client, immatriculation..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+                />
+              </div>
+              <VoiceInputButton
+                onTranscript={(text) => setSearchQuery(text)}
+                title="Dictée vocale recherche"
               />
             </div>
             <div className="flex gap-2">
@@ -941,13 +948,19 @@ export default function DocumentsPage() {
                 <div className="grid grid-cols-12 gap-3 items-end">
                   <div className="col-span-4">
                     <label className="text-[10px] text-slate-500 block mb-1">Description</label>
-                    <input
-                      type="text"
-                      value={freeLineForm.description}
-                      onChange={(e) => setFreeLineForm(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Ex: Filtre à huile, Révision moteur..."
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
-                    />
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={freeLineForm.description}
+                        onChange={(e) => setFreeLineForm(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Ex: Filtre à huile, Révision moteur..."
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                      />
+                      <VoiceInputButton
+                        onTranscript={(text) => setFreeLineForm(prev => ({ ...prev, description: prev.description + ' ' + text }))}
+                        title="Dictée description"
+                      />
+                    </div>
                   </div>
                   <div className="col-span-2">
                     <label className="text-[10px] text-slate-500 block mb-1">Type</label>
@@ -1095,13 +1108,19 @@ export default function DocumentsPage() {
               <div className="flex justify-between items-start border-t border-slate-800 pt-6">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Notes internes / Observations</label>
-                  <textarea
-                    rows={2}
-                    value={docForm.notes}
-                    onChange={(e) => setDocForm(prev => ({ ...prev, notes: e.target.value }))}
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 w-80 focus:outline-none"
-                    placeholder="Commentaires visibles sur le document..."
-                  />
+                  <div className="flex gap-1.5">
+                    <textarea
+                      rows={2}
+                      value={docForm.notes}
+                      onChange={(e) => setDocForm(prev => ({ ...prev, notes: e.target.value }))}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 w-80 focus:outline-none"
+                      placeholder="Commentaires visibles sur le document..."
+                    />
+                    <VoiceInputButton
+                      onTranscript={(text) => setDocForm(prev => ({ ...prev, notes: prev.notes + ' ' + text }))}
+                      title="Dictée notes"
+                    />
+                  </div>
                 </div>
                 <div className="w-64 space-y-2 text-xs border border-slate-800 p-4 rounded-xl bg-slate-950/60 font-mono">
                   <div className="flex justify-between text-slate-400">

@@ -6,6 +6,8 @@ import {
   Trash2,
   RefreshCw,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import VoiceInputButton from '@/components/ui/VoiceInputButton';
 import type { Client, Vehicle } from '@/lib/types';
 
 interface AgendaEvent {
@@ -215,14 +217,20 @@ export default function PlanningPage() {
             <form onSubmit={handleAgendaSubmit} className="p-6 space-y-4">
               <div>
                 <label className="text-xs text-slate-400 block mb-1">{"Titre de l'intervention"}</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Vidange Golf 8"
-                  value={agendaForm.title}
-                  onChange={(e) => setAgendaForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                />
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Vidange Golf 8"
+                    value={agendaForm.title}
+                    onChange={(e) => setAgendaForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                  />
+                  <VoiceInputButton
+                    onTranscript={(text) => setAgendaForm(prev => ({ ...prev, title: prev.title + ' ' + text }))}
+                    title="Dictée titre"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -282,13 +290,19 @@ export default function PlanningPage() {
 
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Description / Notes de panne</label>
-                <textarea
-                  rows={2}
-                  value={agendaForm.description}
-                  onChange={(e) => setAgendaForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                  placeholder="Symptômes décrits par le client..."
-                />
+                <div className="flex gap-1.5">
+                  <textarea
+                    rows={2}
+                    value={agendaForm.description}
+                    onChange={(e) => setAgendaForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    placeholder="Symptômes décrits par le client..."
+                  />
+                  <VoiceInputButton
+                    onTranscript={(text) => setAgendaForm(prev => ({ ...prev, description: prev.description + ' ' + text }))}
+                    title="Dictée description"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">

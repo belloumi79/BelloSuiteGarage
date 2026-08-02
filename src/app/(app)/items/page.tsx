@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import VoiceInputButton from '@/components/ui/VoiceInputButton';
 import type { Item } from '@/lib/types';
 
 interface Category {
@@ -249,14 +250,20 @@ export default function ItemsPage() {
       <div className="p-6 space-y-6 no-print">
         <div className="space-y-6">
           <div className="flex justify-between items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Rechercher par désignation, référence ou code-barres..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+            <div className="relative flex-1 max-w-md flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par désignation, référence ou code-barres..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 focus:outline-none pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-200"
+                />
+              </div>
+              <VoiceInputButton
+                onTranscript={(text) => setSearchQuery(text)}
+                title="Dictée vocale recherche"
               />
             </div>
             <div className="flex gap-2">
@@ -413,46 +420,70 @@ export default function ItemsPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Nom / libellé *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder={itemForm.type === 'part' ? 'e.g. Plaquettes avant Brembo' : "e.g. Diagnostic moteur complet"}
-                      value={itemForm.name}
-                      onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-                    />
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        required
+                        placeholder={itemForm.type === 'part' ? 'e.g. Plaquettes avant Brembo' : "e.g. Diagnostic moteur complet"}
+                        value={itemForm.name}
+                        onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                      />
+                      <VoiceInputButton
+                        onTranscript={(text) => setItemForm(prev => ({ ...prev, name: prev.name + ' ' + text }))}
+                        title="Dictée nom"
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-slate-400 block mb-1">Référence</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. PLA-AV-G8"
-                        value={itemForm.reference}
-                        onChange={(e) => setItemForm(prev => ({ ...prev, reference: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="e.g. PLA-AV-G8"
+                          value={itemForm.reference}
+                          onChange={(e) => setItemForm(prev => ({ ...prev, reference: e.target.value }))}
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                        />
+                        <VoiceInputButton
+                          onTranscript={(text) => setItemForm(prev => ({ ...prev, reference: prev.reference + ' ' + text }))}
+                          title="Dictée référence"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs text-slate-400 block mb-1">Code-barres</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 3276001234567"
-                        value={itemForm.barcode}
-                        onChange={(e) => setItemForm(prev => ({ ...prev, barcode: e.target.value }))}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
-                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="e.g. 3276001234567"
+                          value={itemForm.barcode}
+                          onChange={(e) => setItemForm(prev => ({ ...prev, barcode: e.target.value }))}
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                        />
+                        <VoiceInputButton
+                          onTranscript={(text) => setItemForm(prev => ({ ...prev, barcode: prev.barcode + ' ' + text }))}
+                          title="Dictée code-barres"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Description</label>
-                    <textarea
-                      rows={2}
-                      placeholder="Description optionnelle..."
-                      value={itemForm.description}
-                      onChange={(e) => setItemForm(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none resize-none"
-                    />
+                    <div className="flex gap-1.5">
+                      <textarea
+                        rows={2}
+                        placeholder="Description optionnelle..."
+                        value={itemForm.description}
+                        onChange={(e) => setItemForm(prev => ({ ...prev, description: e.target.value }))}
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none resize-none"
+                      />
+                      <VoiceInputButton
+                        onTranscript={(text) => setItemForm(prev => ({ ...prev, description: prev.description + ' ' + text }))}
+                        title="Dictée description"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

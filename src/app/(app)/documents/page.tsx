@@ -95,6 +95,8 @@ export default function DocumentsPage() {
     vat_rate: 19,
   });
 
+  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
+
   const [paymentForm, setPaymentForm] = useState({
     document_id: '',
     amount: 0,
@@ -250,6 +252,92 @@ export default function DocumentsPage() {
       ...prev,
       lines: prev.lines.filter((_, i) => i !== index)
     }));
+    
+    // If we're editing a line that's before the removed line, adjust the index
+    if (editingLineIndex !== null) {
+      if (editingLineIndex >= index) {
+        setEditingLineIndex(null);
+      }
+    }
+  };
+
+  const editDocLine = (index: number) => {
+    const line = docForm.lines[index];
+    if (!line) return;
+    
+    setFreeLineForm({
+      description: line.description,
+      line_type: line.line_type as 'part' | 'labor',
+      quantity: line.quantity,
+      unit: line.unit || 'pcs',
+      unit_price: line.unit_price,
+      discount_percent: line.discount_percent,
+      vat_rate: line.vat_rate,
+    });
+    setEditingLineIndex(index);
+  };
+
+  const saveEditedLine = () => {
+    if (editingLineIndex === null) return;
+    
+    const desc = freeLineForm.description.trim();
+    if (!desc) {
+      addToast('Veuillez saisir une description pour la ligne.', 'error');
+      return;
+    }
+
+    const qty = Number(freeLineForm.quantity);
+    const disc = Number(freeLineForm.discount_percent);
+    const price = Number(freeLineForm.unit_price);
+    const vat = Number(freeLineForm.vat_rate);
+    const priceAfterDiscount = price * (1 - disc / 100);
+    const totalHT = qty * priceAfterDiscount;
+    const totalVAT = totalHT * (vat / 100);
+    const totalTTC = totalHT + totalVAT;
+
+    const updatedLine: DocumentLineForm = {
+      item_id: docForm.lines[editingLineIndex].item_id,
+      description: desc,
+      line_type: freeLineForm.line_type,
+      quantity: qty,
+      unit: freeLineForm.line_type === 'labor' ? 'h' : freeLineForm.unit,
+      unit_price: price,
+      discount_percent: disc,
+      vat_rate: vat,
+      total_ht: totalHT,
+      total_vat: totalVAT,
+      total_ttc: totalTTC,
+    };
+
+    setDocForm(prev => {
+      const newLines = [...prev.lines];
+      newLines[editingLineIndex] = updatedLine;
+      return { ...prev, lines: newLines };
+    });
+
+    setFreeLineForm({
+      description: '',
+      line_type: 'part',
+      quantity: 1,
+      unit: 'pcs',
+      unit_price: 0,
+      discount_percent: 0,
+      vat_rate: 19,
+    });
+    setEditingLineIndex(null);
+  };
+
+  const cancelEditLine = () => {
+    setFreeLineForm({
+      description: '',
+      line_type: 'part',
+      quantity: 1,
+      unit: 'pcs',
+      unit_price: 0,
+      discount_percent: 0,
+      vat_rate: 19,
+    });
+    setEditingLineIndex(null);
   };
 
   const resetDocForm = () => {
@@ -913,11 +1001,11 @@ export default function DocumentsPage() {
                   <div className="col-span-2">
                     <button
                       type="button"
-                      onClick={addFreeLineItem}
-                      disabled={!freeLineForm.description.trim()}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-600 text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs transition"
+                      onClick={editingLineIndex !== null ? saveEditedLine : addFreeLineItem}
+                      disabled={editingLineIndex === null ? !freeLineForm.description.trim() : !freeLineForm.description.trim()}
+                      className={`w-full ${editingLineIndex !== null ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'} disabled:bg-slate-800 disabled:text-slate-600 text-slate-100 font-semibold px-4 py-2.5 rounded-xl text-xs transition`}
                     >
-                      Ajouter saisie libre
+                      {editingLineIndex !== null ? 'Enregistrer la modification' : 'Ajouter saisie libre'}
                     </button>
                   </div>
                 </div>
@@ -961,13 +1049,41 @@ export default function DocumentsPage() {
                           <td className="p-3 text-right text-slate-400">{line.discount_percent}%</td>
                           <td className="p-3 text-right text-slate-100 font-semibold font-mono">{Number(line.total_ht).toFixed(2)} DT</td>
                           <td className="p-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => removeDocLine(idx)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              Retirer
-                            </button>
+                            {editingLineIndex === idx ? (
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={saveEditedLine}
+                                  className="text-green-400 hover:text-green-300 text-xs font-medium"
+                                >
+                                  Enregistrer
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditLine}
+                                  className="text-slate-400 hover:text-slate-300 text-xs"
+                                >
+                                  Annuler
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => editDocLine(idx)}
+                                  className="text-blue-400 hover:text-blue-300 text-xs font-medium"
+                                >
+                                  Modifier
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeDocLine(idx)}
+                                  className="text-red-400 hover:text-red-300 text-xs"
+                                >
+                                  Retirer
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))

@@ -139,6 +139,10 @@ export interface Garage {
 
 export interface AdminGarage extends Garage {
   members_count?: number;
+  clients_count?: number;
+  vehicles_count?: number;
+  documents_count?: number;
+  items_count?: number;
   owner_email?: string;
   owner_name?: string;
 }

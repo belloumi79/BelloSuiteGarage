@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { clientCreateSchema, clientUpdateSchema } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
+import { canAddClient } from '@/lib/plans';
 
 export async function GET(request: Request) {
   try {
@@ -47,6 +48,13 @@ export async function POST(request: Request) {
   try {
     const ctx = await getCurrentGarage();
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check plan limits
+    const currentClients = await prisma.clients.count({ where: { garage_id: ctx.garage.id, active: true } });
+    const limitCheck = canAddClient(ctx.garage.subscription_plan || 'starter', currentClients);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 403 });
+    }
 
     const body = await request.json();
 

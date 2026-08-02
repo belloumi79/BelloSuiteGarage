@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { itemCreateSchema, itemUpdateSchema } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
+import { canAddItem } from '@/lib/plans';
 
 export async function GET(request: Request) {
   try {
@@ -59,6 +60,13 @@ export async function POST(request: Request) {
   try {
     const ctx = await getCurrentGarage();
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check plan limits
+    const currentItems = await prisma.items.count({ where: { garage_id: ctx.garage.id, active: true } });
+    const limitCheck = canAddItem(ctx.garage.subscription_plan || 'starter', currentItems);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 403 });
+    }
 
     const body = await request.json();
 

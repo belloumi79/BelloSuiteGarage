@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { apiHeaders } from '@/lib/api-headers';
+import { canInviteMember } from '@/lib/plans';
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +12,13 @@ export async function POST(request: Request) {
 
     if (ctx.role !== 'owner') {
       return NextResponse.json({ error: 'Seul le propriétaire peut inviter des membres' }, { status: 403 });
+    }
+
+    // Check plan limits
+    const currentMembers = await prisma.garage_members.count({ where: { garage_id: ctx.garage.id, active: true } });
+    const limitCheck = canInviteMember(ctx.garage.subscription_plan || 'starter', currentMembers);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 403 });
     }
 
     const { email, role } = await request.json();

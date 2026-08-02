@@ -6,6 +6,7 @@ import { document_type, document_status } from '@prisma/client';
 import { documentCreateSchema } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
 import { applyStockMovement } from '@/lib/stock';
+import { canCreateDocument } from '@/lib/plans';
 
 /**
  * Prisma serializes Decimal values as strings in JSON.
@@ -108,6 +109,23 @@ export async function POST(request: Request) {
   try {
     const ctx = await getCurrentGarage();
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check plan limits for documents created this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    const docsThisMonth = await prisma.documents.count({
+      where: {
+        garage_id: ctx.garage.id,
+        created_at: { gte: startOfMonth },
+      },
+    });
+    
+    const limitCheck = canCreateDocument(ctx.garage.subscription_plan || 'starter', docsThisMonth);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 403 });
+    }
 
     let rawBody: Record<string, unknown> = {};
     try {

@@ -7,8 +7,6 @@ import { Wrench } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import ClientLayout from './ClientLayout';
 import AppShell from './AppShell';
-import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
-import { OnlineStatus } from '@/components/OnlineStatus';
 
 export default async function AppLayout({
   children,
@@ -41,13 +39,9 @@ export default async function AppLayout({
 
   if (ctx) {
     return (
-      <>
-        <OnlineStatus />
-        <PWAInstallPrompt />
-        <AppShell isSuperAdmin={isSuperAdmin}>
-          <ClientLayout>{children}</ClientLayout>
-        </AppShell>
-      </>
+      <AppShell isSuperAdmin={isSuperAdmin}>
+        <ClientLayout>{children}</ClientLayout>
+      </AppShell>
     );
   }
 

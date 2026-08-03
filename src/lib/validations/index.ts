@@ -1,9 +1,20 @@
 import { z } from 'zod';
 
 /**
- * Client validation schemas
+ * Validation helpers for Tunisia-specific fiscal rules
  */
-const clientBaseSchema = z.object({
+
+// Tunisia Matricule Fiscal: 7 digits + 1 uppercase letter (e.g., 1234567A)
+export const mfSchema = z.string().regex(/^\d{7}[A-Z]$/, 'Format MF invalide: 7 chiffres + 1 lettre majuscule (ex: 1234567A)').optional().or(z.literal(''));
+
+// TVA rates allowed in Tunisia: 19% (normal), 13% (reduced), 7% (super reduced), 0% (exempt)
+export const tvaRateSchema = z.enum(['0', '7', '13', '19']).transform(Number).default('19');
+
+// Timbre fiscal: 1 DT for invoices > 20 DT
+export const TIMBRE_THRESHOLD = 20; // DT
+export const TIMBRE_AMOUNT = 1; // DT
+
+export const clientBaseSchema = z.object({
     type: z.enum(['individual', 'company']).default('individual'),
     civility: z.string().optional(),
     first_name: z.string().optional(),
@@ -17,7 +28,7 @@ const clientBaseSchema = z.object({
     postal_code: z.string().optional(),
     city: z.string().optional(),
     country: z.string().default('TN'),
-    tax_id: z.string().optional(),
+    tax_id: mfSchema,
     notes: z.string().optional(),
     payment_terms_days: z.number().int().min(0).default(0),
     discount_percent: z.number().min(0).max(100).default(0),
@@ -73,7 +84,7 @@ export const itemCreateSchema = z.object({
     unit: z.string().default('pcs'),
     purchase_price: z.number().min(0).default(0),
     selling_price: z.number().min(0).default(0),
-    vat_rate: z.number().min(0).max(100).default(19),
+    vat_rate: tvaRateSchema,
     stock_qty: z.number().min(0).default(0),
     stock_min: z.number().min(0).default(0),
     stock_location: z.string().optional(),
@@ -100,7 +111,7 @@ export const documentLineSchema = z.object({
     unit: z.preprocess((val) => (val === '' || val === null || val === undefined ? 'pcs' : String(val)), z.string().default('pcs')),
     unit_price: z.preprocess(coerceToNumber, z.number().min(0)),
     discount_percent: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(0)),
-    vat_rate: z.preprocess(coerceToNumber, z.number().min(0).max(100).default(19)),
+    vat_rate: z.preprocess(coerceToNumber, tvaRateSchema),
     // Accept client-provided totals (ignored server-side; recalculated in handler)
     total_ht: z.preprocess(coerceToNumber, z.number().min(0).optional()),
     total_vat: z.preprocess(coerceToNumber, z.number().min(0).optional()),
@@ -122,6 +133,16 @@ export const documentUpdateSchema = z.object({
     transitionTo: z.enum(['repair_order', 'invoice']).optional(),
     vehicle_id: z.preprocess((val) => (val === '' || val === null ? undefined : val), z.string().uuid().optional().nullable()),
 });
+
+/**
+ * Calculate timbre fiscal (1 DT for invoices > 20 DT)
+ */
+export function calculateTimbre(subtotalTTC: number): number {
+    if (subtotalTTC > TIMBRE_THRESHOLD) {
+        return TIMBRE_AMOUNT;
+    }
+    return 0;
+}
 
 /**
  * Payment validation schemas

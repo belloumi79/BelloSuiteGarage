@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentGarage } from '@/lib/context';
 import { document_type, document_status } from '@prisma/client';
-import { documentCreateSchema } from '@/lib/validations';
+import { documentCreateSchema, calculateTimbre } from '@/lib/validations';
 import { apiHeaders } from '@/lib/api-headers';
 import { applyStockMovement } from '@/lib/stock';
 import { canCreateDocument } from '@/lib/plans';
@@ -211,6 +211,10 @@ export async function POST(request: Request) {
       };
     });
 
+    // 2. Calculate timbre fiscal for invoices only
+    const timbre = type === 'invoice' ? calculateTimbre(total_ttc) : 0;
+    const final_total_ttc = total_ttc + timbre;
+
     // 2. Create the document
     const document = await prisma.documents.create({
       data: {
@@ -223,7 +227,7 @@ export async function POST(request: Request) {
         notes,
         subtotal_ht,
         total_vat,
-        total_ttc,
+        total_ttc: final_total_ttc,
         document_lines: {
           create: formattedLines,
         },

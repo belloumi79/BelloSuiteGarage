@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback } from 'react';
 
-type ToastType = 'success' | 'error' | 'info';
+type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 type Toast = {
   id: number;
@@ -39,6 +39,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => removeToast(id), 3500);
   }, [removeToast]);
 
+  const getToastClass = (type: ToastType) => {
+    switch (type) {
+      case 'success': return 'bg-emerald-600/90 border-emerald-500/30 text-emerald-50';
+      case 'error': return 'bg-red-600/90 border-red-500/30 text-red-50';
+      case 'warning': return 'bg-amber-600/90 border-amber-500/30 text-amber-50';
+      default: return 'bg-blue-600/90 border-blue-500/30 text-blue-50';
+    }
+  };
+
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
@@ -46,13 +55,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className={`px-4 py-3 rounded-xl shadow-2xl text-sm font-medium backdrop-blur-md border transition-all animate-slide-up flex items-center gap-3 ${
-              toast.type === 'success'
-                ? 'bg-emerald-600/90 border-emerald-500/30 text-emerald-50'
-                : toast.type === 'error'
-                ? 'bg-red-600/90 border-red-500/30 text-red-50'
-                : 'bg-blue-600/90 border-blue-500/30 text-blue-50'
-            }`}
+            className={`px-4 py-3 rounded-xl shadow-2xl text-sm font-medium backdrop-blur-md border transition-all animate-slide-up flex items-center gap-3 ${getToastClass(toast.type)}`}
           >
             <span className="flex-1">{toast.message}</span>
             <button

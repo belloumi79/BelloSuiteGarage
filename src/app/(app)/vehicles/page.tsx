@@ -44,7 +44,12 @@ export default function VehiclesPage() {
     color: '',
     year: new Date().getFullYear(),
     mileage: 0,
-    notes: ''
+    notes: '',
+    // Maintenance tracking
+    last_service_date: '',
+    last_service_mileage: '',
+    service_interval_km: 10000,
+    service_interval_months: 12,
   });
 
   const { addToast } = useToast();
@@ -95,7 +100,12 @@ export default function VehiclesPage() {
       color: '',
       year: new Date().getFullYear(),
       mileage: 0,
-      notes: ''
+      notes: '',
+      // Maintenance tracking
+      last_service_date: '',
+      last_service_mileage: '',
+      service_interval_km: 10000,
+      service_interval_months: 12,
     });
     setEditingVehicle(null);
   };
@@ -251,6 +261,39 @@ export default function VehiclesPage() {
                         <span className="text-slate-500">Propriétaire :</span>
                         <span className="text-blue-400 font-medium truncate max-w-[150px]">{clientName}</span>
                       </div>
+                      {/* Maintenance Status */}
+                      {(vehicle.last_service_mileage || vehicle.last_service_date) && (
+                        <div className="border-t border-slate-800/40 pt-2 space-y-1">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">Dernière révision :</span>
+                            <span className="text-slate-300 font-medium">
+                              {vehicle.last_service_date ? new Date(vehicle.last_service_date).toLocaleDateString('fr-FR') : '—'}
+                              {vehicle.last_service_mileage ? ` • ${Number(vehicle.last_service_mileage).toLocaleString('fr-TN')} km` : ''}
+                            </span>
+                          </div>
+                          {vehicle.mileage && vehicle.last_service_mileage && vehicle.service_interval_km && (
+                            <div className="flex justify-between text-[10px]">
+                              <span className="text-slate-500">Prochaine révision :</span>
+                              <span className="text-amber-400 font-medium">
+                                ~{Number(vehicle.last_service_mileage + vehicle.service_interval_km).toLocaleString('fr-TN')} km
+                              </span>
+                            </div>
+                          )}
+                          {vehicle.mileage && vehicle.last_service_mileage && vehicle.service_interval_km && (
+                            <div className={`h-1.5 bg-slate-800 rounded-full overflow-hidden`}>
+                              <div 
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  vehicle.mileage >= vehicle.last_service_mileage + vehicle.service_interval_km ? 'bg-red-500' :
+                                  vehicle.mileage >= vehicle.last_service_mileage + vehicle.service_interval_km * 0.9 ? 'bg-amber-500' : 'bg-emerald-500'
+                                }`}
+                                style={{ 
+                                  width: `${Math.min(100, ((vehicle.mileage - vehicle.last_service_mileage) / vehicle.service_interval_km) * 100)}%` 
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/60">
@@ -278,7 +321,12 @@ export default function VehiclesPage() {
                             color: vehicle.color || '',
                             year: vehicle.year ?? new Date().getFullYear(),
                             mileage: vehicle.mileage ?? 0,
-                            notes: vehicle.notes || ''
+                            notes: vehicle.notes || '',
+                            // Maintenance tracking
+                            last_service_date: vehicle.last_service_date ? new Date(vehicle.last_service_date).toISOString().split('T')[0] : '',
+                            last_service_mileage: vehicle.last_service_mileage?.toString() ?? '',
+                            service_interval_km: vehicle.service_interval_km ?? 10000,
+                            service_interval_months: vehicle.service_interval_months ?? 12,
                           });
                           setIsVehicleModalOpen(true);
                         }}
@@ -440,6 +488,56 @@ export default function VehiclesPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Maintenance Tracking Section */}
+              <div className="border-t border-slate-800/50 pt-4 mt-4">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  Suivi Maintenance
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Dernière révision (date)</label>
+                    <input
+                      type="date"
+                      value={vehicleForm.last_service_date}
+                      onChange={(e) => setVehicleForm(prev => ({ ...prev, last_service_date: e.target.value }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Dernière révision (km)</label>
+                    <input
+                      type="number"
+                      placeholder="ex: 45000"
+                      value={vehicleForm.last_service_mileage}
+                      onChange={(e) => setVehicleForm(prev => ({ ...prev, last_service_mileage: e.target.value }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Intervalle km</label>
+                    <input
+                      type="number"
+                      value={vehicleForm.service_interval_km}
+                      onChange={(e) => setVehicleForm(prev => ({ ...prev, service_interval_km: Number(e.target.value) }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Intervalle mois</label>
+                    <input
+                      type="number"
+                      value={vehicleForm.service_interval_months}
+                      onChange={(e) => setVehicleForm(prev => ({ ...prev, service_interval_months: Number(e.target.value) }))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Les rappels SMS/WhatsApp automatiques seront envoyés à 90% de l&apos;intervalle (km ou mois).
+                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">

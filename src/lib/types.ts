@@ -39,6 +39,11 @@ export interface Vehicle {
   color: string | null;
   mileage: number | null;
   notes: string | null;
+  // Maintenance tracking
+  last_service_date: string | null;
+  last_service_mileage: number | null;
+  service_interval_km: number | null;
+  service_interval_months: number | null;
   created_at: string;
   updated_at: string;
   clients?: { first_name: string | null; last_name: string | null; company_name: string | null };

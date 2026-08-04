@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   UserPlus,
   CarFront,
+  Bell,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import VoiceInputButton from '@/components/ui/VoiceInputButton';
@@ -43,6 +44,13 @@ interface AgendaEvent {
     model?: string | null; 
     plate?: string | null 
   } | null;
+  reminders?: {
+    id: string;
+    reminder_time: string;
+    channel: string;
+    status: string;
+    message?: string | null;
+  }[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -512,6 +520,179 @@ function VehicleFormModalContent({
       <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
         <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Annuler</button>
         <button type="submit" disabled={loading} className="px-4 py-2.5 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold">{loading ? 'Création...' : 'Créer le véhicule'}</button>
+      </div>
+    </form>
+  );
+}
+
+
+function ReminderFormModalContent({ 
+  reminders, 
+  onClose, 
+  onSave, 
+  eventStart 
+}: { 
+  reminders: { 
+    id?: string; 
+    reminder_time: string; 
+    channel: 'in_app' | 'sms' | 'whatsapp' | 'email'; 
+    status: 'pending' | 'sent' | 'failed' | 'dismissed'; 
+    message?: string; 
+  }[]; 
+  onClose: () => void; 
+  onSave: (updatedReminders: typeof reminders) => void; 
+  eventStart: string; 
+}) {
+  const [reminderForm, setReminderForm] = useState<{
+    reminder_time: string;
+    channel: 'in_app' | 'sms' | 'whatsapp' | 'email';
+    message: string;
+  }>({
+    reminder_time: '',
+    channel: 'in_app',
+    message: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const { addToast } = useToast();
+
+  // Initialize with event start time minus 30 minutes as default
+  useEffect(() => {
+    if (eventStart && !reminderForm.reminder_time) {
+      const eventDate = new Date(eventStart);
+      eventDate.setMinutes(eventDate.getMinutes() - 30);
+      setReminderForm(prev => ({ ...prev, reminder_time: eventDate.toISOString().slice(0, 16) }));
+    }
+  }, [eventStart]);
+
+  const handleAddReminder = () => {
+    if (!reminderForm.reminder_time) {
+      addToast('Veuillez sélectionner une date/heure', 'error');
+      return;
+    }
+    
+    const newReminder = {
+      id: crypto.randomUUID(),
+      reminder_time: new Date(reminderForm.reminder_time).toISOString(),
+      channel: reminderForm.channel,
+      status: 'pending' as const,
+      message: reminderForm.message || undefined,
+    };
+    
+    const updated = [...reminders, newReminder];
+    onSave(updated);
+    
+    // Reset form
+    setReminderForm({
+      reminder_time: '',
+      channel: 'in_app',
+      message: '',
+    });
+    
+    addToast('Rappel ajouté');
+  };
+
+  const handleRemoveReminder = (index: number) => {
+    const updated = reminders.filter((_, idx) => idx !== index);
+    onSave(updated);
+    addToast('Rappel supprimé');
+  };
+
+  const channelLabels: Record<string, string> = {
+    in_app: '🔔 In-app',
+    sms: '📱 SMS',
+    whatsapp: '💬 WhatsApp',
+    email: '📧 Email',
+  };
+
+  return (
+    <form className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium text-slate-300">Ajouter un rappel</h4>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Date / Heure *</label>
+            <input
+              type="datetime-local"
+              value={reminderForm.reminder_time}
+              onChange={(e) => setReminderForm(prev => ({ ...prev, reminder_time: e.target.value }))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Canal</label>
+            <select
+              value={reminderForm.channel}
+              onChange={(e) => setReminderForm(prev => ({ ...prev, channel: e.target.value as any }))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            >
+              <option value="in_app">🔔 In-app (notification navigateur)</option>
+              <option value="sms">📱 SMS</option>
+              <option value="whatsapp">💬 WhatsApp</option>
+              <option value="email">📧 Email</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Message (optionnel)</label>
+          <input
+            type="text"
+            value={reminderForm.message}
+            onChange={(e) => setReminderForm(prev => ({ ...prev, message: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            placeholder="Message personnalisé..."
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleAddReminder}
+          disabled={loading || !reminderForm.reminder_time}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-xl transition disabled:opacity-50"
+        >
+          {loading ? 'Ajout...' : 'Ajouter ce rappel'}
+        </button>
+      </div>
+
+      {reminders.length > 0 && (
+        <div className="pt-4 border-t border-slate-800">
+          <h4 className="text-sm font-medium text-slate-300 mb-2">Rappels programmés ({reminders.length})</h4>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {reminders.map((reminder, idx) => (
+              <div key={reminder.id || idx} className="bg-slate-800/50 border border-slate-700 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 rounded text-[10px] font-medium">
+                    {channelLabels[reminder.channel]}
+                  </span>
+                  <span className="text-slate-300 truncate">
+                    {new Date(reminder.reminder_time).toLocaleString('fr-TN', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </span>
+                  {reminder.message && (
+                    <span className="text-slate-500 truncate">{reminder.message}</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveReminder(idx)}
+                  className="p-1 text-red-400 hover:text-red-300 rounded"
+                  title="Supprimer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Fermer</button>
       </div>
     </form>
   );
@@ -1072,7 +1253,7 @@ export default function PlanningPage() {
       status: 'planned',
       color: '#3b82f6',
       description: prefill?.description || '',
-      ...prefill,
+      reminders: [],
     });
     setIsModalOpen(true);
   };
@@ -1088,6 +1269,13 @@ export default function PlanningPage() {
       status: event.status,
       color: event.color || '#3b82f6',
       description: event.description || '',
+      reminders: (event.reminders || []).map(r => ({
+        id: r.id,
+        reminder_time: r.reminder_time,
+        channel: r.channel as 'in_app' | 'sms' | 'whatsapp' | 'email',
+        status: r.status as 'pending' | 'sent' | 'failed' | 'dismissed',
+        message: r.message || undefined,
+      })),
     });
     setIsModalOpen(true);
   };
@@ -1108,6 +1296,13 @@ export default function PlanningPage() {
     status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
     color: string;
     description: string;
+    reminders: {
+      id?: string;
+      reminder_time: string;
+      channel: 'in_app' | 'sms' | 'whatsapp' | 'email';
+      status: 'pending' | 'sent' | 'failed' | 'dismissed';
+      message?: string;
+    }[];
   }>({
     title: '',
     starts_at: '',
@@ -1117,7 +1312,11 @@ export default function PlanningPage() {
     status: 'planned',
     color: '#3b82f6',
     description: '',
+    reminders: [],
   });
+
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [editingReminderIndex, setEditingReminderIndex] = useState<number | null>(null);
 
   const resetForm = () => {
     setAgendaForm({
@@ -1129,7 +1328,15 @@ export default function PlanningPage() {
       status: 'planned',
       color: '#3b82f6',
       description: '',
+      reminders: [],
     });
+  };
+
+  const handleRemoveReminder = (index: number) => {
+    setAgendaForm(prev => ({
+      ...prev,
+      reminders: prev.reminders.filter((_, idx) => idx !== index),
+    }));
   };
 
   // CRUD operations
@@ -1498,6 +1705,47 @@ export default function PlanningPage() {
                 />
               </div>
 
+              {/* Reminders Section */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 flex items-center gap-2">
+                  Rappels / Notifications
+                  <button
+                    type="button"
+                    onClick={() => setShowReminderModal(true)}
+                    className="text-xs text-blue-400 hover:text-blue-300 underline"
+                  >
+                    Gérer les rappels
+                  </button>
+                </label>
+                {agendaForm.reminders && agendaForm.reminders.length > 0 && (
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto pr-2">
+                    {agendaForm.reminders.map((reminder, idx) => (
+                      <div key={reminder.id || idx} className="bg-slate-800/50 border border-slate-700 rounded-lg p-2 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 rounded text-[10px] font-medium">
+                            {reminder.channel === 'in_app' ? '🔔 In-app' : reminder.channel === 'sms' ? '📱 SMS' : reminder.channel === 'whatsapp' ? '💬 WhatsApp' : '📧 Email'}
+                          </span>
+                          <span className="text-slate-300">
+                            {new Date(reminder.reminder_time).toLocaleString('fr-TN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {reminder.message && (
+                            <span className="text-slate-500 truncate max-w-[200px]">{reminder.message}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReminder(idx)}
+                          className="p-1 text-red-400 hover:text-red-300 rounded"
+                          title="Supprimer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Description / Notes</label>
                 <div className="flex gap-1.5">
@@ -1559,6 +1807,27 @@ export default function PlanningPage() {
               onSuccess={() => { loadData(); setShowVehicleModal(false); }} 
               clientId={agendaForm.client_id || undefined}
               clients={clients}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Reminder Modal */}
+      {showReminderModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+              <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-amber-500" />
+                Gérer les rappels
+              </h3>
+              <button onClick={() => setShowReminderModal(false)} className="text-slate-400 hover:text-slate-200">&times;</button>
+            </div>
+            <ReminderFormModalContent
+              reminders={agendaForm.reminders}
+              onClose={() => setShowReminderModal(false)}
+              onSave={(updatedReminders) => setAgendaForm(prev => ({ ...prev, reminders: updatedReminders }))}
+              eventStart={agendaForm.starts_at}
             />
           </div>
         </div>

@@ -16,6 +16,8 @@ import {
   Car,
   User,
   AlertTriangle,
+  UserPlus,
+  CarFront,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import VoiceInputButton from '@/components/ui/VoiceInputButton';
@@ -43,8 +45,6 @@ interface AgendaEvent {
   } | null;
 }
 
-type ViewMode = 'day' | 'week' | 'month';
-
 const STATUS_COLORS: Record<string, string> = {
   planned: '#3b82f6',
   in_progress: '#f59e0b',
@@ -52,12 +52,470 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: '#ef4444',
 };
 
+type ViewMode = 'day' | 'week' | 'month';
+
 const HOUR_HEIGHT = 60;
 const DAY_START_HOUR = 7;
 const DAY_END_HOUR = 20;
 const VISIBLE_HOURS = DAY_END_HOUR - DAY_START_HOUR;
 
 // ========== SUB-COMPONENTS ==========
+
+// Client Form Modal Content
+function ClientFormModalContent({ 
+  onClose, 
+  onSuccess 
+}: { 
+  onClose: () => void; 
+  onSuccess: () => void; 
+}) {
+  const [clientForm, setClientForm] = useState({
+    type: 'individual',
+    civility: 'M.',
+    first_name: '',
+    last_name: '',
+    company_name: '',
+    email: '',
+    phone: '',
+    address_line1: '',
+    city: '',
+    tax_id: '',
+    payment_terms_days: 30,
+    discount_percent: 0
+  });
+  const [loading, setLoading] = useState(false);
+  const { addToast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clientForm)
+      });
+      if (res.ok) {
+        addToast('Client créé avec succès');
+        onSuccess();
+        onClose();
+      } else {
+        const err = await res.json();
+        addToast(err.error || 'Erreur lors de la création', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      addToast('Erreur lors de la création', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto max-h-[70vh]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Type de Client</label>
+          <select
+            value={clientForm.type}
+            onChange={(e) => setClientForm(prev => ({ ...prev, type: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          >
+            <option value="individual">Particulier</option>
+            <option value="company">Entreprise / Société</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Civilité</label>
+          <select
+            value={clientForm.civility}
+            onChange={(e) => setClientForm(prev => ({ ...prev, civility: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            disabled={clientForm.type === 'company'}
+          >
+            <option value="M.">M.</option>
+            <option value="Mme">Mme</option>
+            <option value="Mlle">Mlle</option>
+          </select>
+        </div>
+      </div>
+
+      {clientForm.type === 'company' ? (
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Nom de l&apos;entreprise</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              required
+              value={clientForm.company_name}
+              onChange={(e) => setClientForm(prev => ({ ...prev, company_name: e.target.value }))}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            />
+            <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, company_name: txt }))} title="Dictée nom entreprise" />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Prénom</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                required
+                value={clientForm.first_name}
+                onChange={(e) => setClientForm(prev => ({ ...prev, first_name: e.target.value }))}
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+              />
+              <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, first_name: txt }))} title="Dictée prénom" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Nom de famille</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                required
+                value={clientForm.last_name}
+                onChange={(e) => setClientForm(prev => ({ ...prev, last_name: e.target.value }))}
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+              />
+              <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, last_name: txt }))} title="Dictée nom" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Téléphone</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              required
+              value={clientForm.phone}
+              onChange={(e) => setClientForm(prev => ({ ...prev, phone: e.target.value }))}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            />
+            <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, phone: txt }))} title="Dictée téléphone" />
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">E-mail</label>
+          <input
+            type="email"
+            value={clientForm.email}
+            onChange={(e) => setClientForm(prev => ({ ...prev, email: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Adresse</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={clientForm.address_line1}
+              onChange={(e) => setClientForm(prev => ({ ...prev, address_line1: e.target.value }))}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            />
+            <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, address_line1: txt }))} title="Dictée adresse" />
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Ville</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={clientForm.city}
+              onChange={(e) => setClientForm(prev => ({ ...prev, city: e.target.value }))}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            />
+            <VoiceInputButton onTranscript={(txt) => setClientForm(prev => ({ ...prev, city: txt }))} title="Dictée ville" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Mat. Fiscal (M.F.)</label>
+          <input
+            type="text"
+            value={clientForm.tax_id}
+            onChange={(e) => setClientForm(prev => ({ ...prev, tax_id: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Délai Paiement (jours)</label>
+          <input
+            type="number"
+            value={clientForm.payment_terms_days}
+            onChange={(e) => setClientForm(prev => ({ ...prev, payment_terms_days: Number(e.target.value) }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Remise (%)</label>
+          <input
+            type="number"
+            value={clientForm.discount_percent}
+            onChange={(e) => setClientForm(prev => ({ ...prev, discount_percent: Number(e.target.value) }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Annuler</button>
+        <button type="submit" disabled={loading} className="px-4 py-2.5 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold">{loading ? 'Création...' : 'Créer le client'}</button>
+      </div>
+    </form>
+  );
+}
+
+// Vehicle Form Modal Content
+function VehicleFormModalContent({ 
+  onClose, 
+  onSuccess, 
+  clientId,
+  clients
+}: { 
+  onClose: () => void; 
+  onSuccess: () => void; 
+  clientId?: string;
+  clients: { id: string; company_name?: string | null; first_name?: string | null; last_name?: string | null }[];
+}) {
+  const [vehicleForm, setVehicleForm] = useState({
+    client_id: clientId || '',
+    plate: '',
+    vin: '',
+    make: '',
+    model: '',
+    version: '',
+    fuel: 'Essence',
+    color: '',
+    year: new Date().getFullYear(),
+    mileage: 0,
+    notes: '',
+    last_service_date: '',
+    last_service_mileage: 0,
+    service_interval_km: 10000,
+    service_interval_months: 12,
+  });
+  const [loading, setLoading] = useState(false);
+  const { addToast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vehicleForm.client_id) {
+      addToast('Veuillez sélectionner un client', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/vehicles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vehicleForm)
+      });
+      if (res.ok) {
+        addToast('Véhicule créé avec succès');
+        onSuccess();
+        onClose();
+      } else {
+        const err = await res.json();
+        addToast(err.error || 'Erreur lors de la création', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      addToast('Erreur lors de la création', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto max-h-[70vh]">
+      <div>
+        <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Client *</label>
+        <select
+          value={vehicleForm.client_id}
+          onChange={(e) => setVehicleForm(prev => ({ ...prev, client_id: e.target.value }))}
+          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+        >
+          <option value="">-- Sélectionner un client --</option>
+          {clients.map(c => {
+            const name = c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim();
+            return <option key={c.id} value={c.id}>{name}</option>;
+          })}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Immatriculation</label>
+          <input
+            type="text"
+            value={vehicleForm.plate}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, plate: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            placeholder="ex: 123 TUN 4567"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">VIN</label>
+          <input
+            type="text"
+            value={vehicleForm.vin}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, vin: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            placeholder="17 caractères"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Marque</label>
+          <input
+            type="text"
+            value={vehicleForm.make}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, make: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Modèle</label>
+          <input
+            type="text"
+            value={vehicleForm.model}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, model: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Version</label>
+          <input
+            type="text"
+            value={vehicleForm.version}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, version: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Énergie</label>
+          <select
+            value={vehicleForm.fuel}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, fuel: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          >
+            <option value="Essence">Essence</option>
+            <option value="Diesel">Diesel</option>
+            <option value="Hybride">Hybride</option>
+            <option value="Électrique">Électrique</option>
+            <option value="GPL">GPL</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Couleur</label>
+          <input
+            type="text"
+            value={vehicleForm.color}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, color: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Année</label>
+          <input
+            type="number"
+            value={vehicleForm.year}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, year: Number(e.target.value) }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            min="1900"
+            max={new Date().getFullYear() + 1}
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Kilométrage</label>
+          <input
+            type="number"
+            value={vehicleForm.mileage}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, mileage: Number(e.target.value) }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            min="0"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Dernière révision (date)</label>
+          <input
+            type="date"
+            value={vehicleForm.last_service_date}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, last_service_date: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Dernière révision (km)</label>
+          <input
+            type="number"
+            value={vehicleForm.last_service_mileage}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, last_service_mileage: Number(e.target.value) }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            min="0"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Intervalle vidange (km)</label>
+          <input
+            type="number"
+            value={vehicleForm.service_interval_km}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, service_interval_km: Number(e.target.value) }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            min="1000"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Intervalle vidange (mois)</label>
+          <input
+            type="number"
+            value={vehicleForm.service_interval_months}
+            onChange={(e) => setVehicleForm(prev => ({ ...prev, service_interval_months: Number(e.target.value) }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none"
+            min="1"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[10px] sm:text-xs text-slate-400 block mb-1">Notes</label>
+        <textarea
+          rows={2}
+          value={vehicleForm.notes}
+          onChange={(e) => setVehicleForm(prev => ({ ...prev, notes: e.target.value }))}
+          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none resize-none"
+          placeholder="Notes additionnelles..."
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Annuler</button>
+        <button type="submit" disabled={loading} className="px-4 py-2.5 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold">{loading ? 'Création...' : 'Créer le véhicule'}</button>
+      </div>
+    </form>
+  );
+}
 
 interface EventBlockProps {
   event: AgendaEvent;
@@ -475,6 +933,8 @@ export default function PlanningPage() {
   const [draggedEvent, setDraggedEvent] = useState<AgendaEvent | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<{ date: Date; hour: number } | null>(null);
   const [resizingEvent, setResizingEvent] = useState<{ event: AgendaEvent; direction: 'top' | 'bottom'; startY: number; startHeight: number } | null>(null);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
   const { addToast } = useToast();
 
   // Load data
@@ -967,12 +1427,12 @@ export default function PlanningPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="relative">
                   <label className="text-xs text-slate-400 block mb-1">Client</label>
                   <select
                     value={agendaForm.client_id}
                     onChange={(e) => setAgendaForm(prev => ({ ...prev, client_id: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 pr-10"
                   >
                     <option value="">-- Aucun --</option>
                     {clients.map(c => {
@@ -980,13 +1440,21 @@ export default function PlanningPage() {
                       return <option key={c.id} value={c.id}>{name}</option>;
                     })}
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => { setShowClientModal(true); setShowVehicleModal(false); }}
+                    className="absolute right-2 top-[34px] p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+                    title="Nouveau client"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                  </button>
                 </div>
-                <div>
+                <div className="relative">
                   <label className="text-xs text-slate-400 block mb-1">Véhicule</label>
                   <select
                     value={agendaForm.vehicle_id}
                     onChange={(e) => setAgendaForm(prev => ({ ...prev, vehicle_id: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 pr-10"
                   >
                     <option value="">-- Aucun --</option>
                     {vehicles
@@ -995,6 +1463,14 @@ export default function PlanningPage() {
                         <option key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</option>
                       ))}
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => { setShowVehicleModal(true); setShowClientModal(false); }}
+                    className="absolute right-2 top-[34px] p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                    title="Nouveau véhicule"
+                  >
+                    <CarFront className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -1044,6 +1520,46 @@ export default function PlanningPage() {
                 <button type="submit" className="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold">{editingEvent ? 'Enregistrer' : 'Créer'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Client Modal */}
+      {showClientModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+              <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-green-500" />
+                Nouveau client
+              </h3>
+              <button onClick={() => setShowClientModal(false)} className="text-slate-400 hover:text-slate-200">&times;</button>
+            </div>
+            <ClientFormModalContent 
+              onClose={() => setShowClientModal(false)} 
+              onSuccess={() => { loadData(); setShowClientModal(false); }} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Vehicle Modal */}
+      {showVehicleModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+              <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">
+                <CarFront className="w-5 h-5 text-blue-500" />
+                Nouveau véhicule
+              </h3>
+              <button onClick={() => setShowVehicleModal(false)} className="text-slate-400 hover:text-slate-200">&times;</button>
+            </div>
+            <VehicleFormModalContent 
+              onClose={() => setShowVehicleModal(false)} 
+              onSuccess={() => { loadData(); setShowVehicleModal(false); }} 
+              clientId={agendaForm.client_id || undefined}
+              clients={clients}
+            />
           </div>
         </div>
       )}

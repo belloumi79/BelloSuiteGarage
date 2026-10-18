@@ -50,7 +50,7 @@ export async function GET(request: Request) {
           },
           include: {
             clients: {
-              select: { id: true, first_name: true, last_name: true, company_name: true, phone: true, mobile: true },
+              select: { id: true, first_name: true, last_name: true, company_name: true, phone: true, mobile: true, whatsapp_opt_in: true },
             },
           },
         });
@@ -126,8 +126,15 @@ export async function GET(request: Request) {
               
               // Try WhatsApp first (cheaper), fallback to SMS
               let sent = false;
-              if (process.env.WHATSAPP_ENABLED === 'true') {
-                sent = await sendWhatsApp(phone, message);
+              // WhatsApp via WPPConnect — respecte kill-switch + opt-in client (Loi 2004-5)
+              if (process.env.WHATSAPP_ENABLED === 'true' && client.whatsapp_opt_in) {
+                sent = await sendWhatsApp({
+                  clientId: vehicle.client_id,
+                  garageId: garage.id,
+                  phone: phone || '',
+                  message,
+                  templateKey: 'service_reminder',
+                });
               }
               if (!sent && process.env.SMS_ENABLED === 'true') {
                 sent = await sendSMS(phone, message);

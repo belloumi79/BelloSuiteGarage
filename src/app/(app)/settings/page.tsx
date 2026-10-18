@@ -33,6 +33,7 @@ export default function SettingsPage() {
         city: data.garage.city || '',
         invoice_footer: data.garage.invoice_footer || '',
         vat_default: String(data.garage.vat_default || 19),
+        whatsapp_notifications_enabled: String(data.garage.whatsapp_notifications_enabled ?? false),
       });
     } catch {
       addToast('Erreur lors du chargement', 'error');
@@ -63,6 +64,7 @@ export default function SettingsPage() {
           city: form.city || undefined,
           invoice_footer: form.invoice_footer || undefined,
           vat_default: form.vat_default ? Number(form.vat_default) : undefined,
+          whatsapp_notifications_enabled: form.whatsapp_notifications_enabled === 'true' || undefined,
         }),
       });
       if (res.ok) {
@@ -210,6 +212,43 @@ export default function SettingsPage() {
                   {saving ? 'Enregistrement...' : 'Enregistrer'}
                 </button>
               </div>
+            </div>
+
+            {/* WhatsApp notifications — J+3 upsell + toggle tenant (kill-switch) */}
+            <div className="max-w-2xl bg-slate-900 border border-slate-800/80 rounded-2xl p-6 space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-200">Notifications WhatsApp</h3>
+                <p className="text-xs text-slate-500">
+                  Relances automatiques de factures impayées (J+3, J+7, J+15) — chaque client ayant consenti reçoit un rappel
+                </p>
+              </div>
+
+              {/* J+3 upsell block — affiché quand le toggle est désactivé */}
+              {dashboardData.garage.whatsapp_notifications_enabled !== true && (
+                <div className="bg-amber-900/10 border border-amber-800/30 rounded-xl p-3">
+                  <p className="text-xs text-amber-400/90">
+                    <span className="font-medium">💡 1 action = encaisser plus vite</span>
+                    <br />
+                    Vos relances WhatsApp ne tournent pas encore : vos factures en retard ne génèrent aucun rappel.
+                    Activez-les en 1 clic — chaque client ayant opté in reçoit un rappel automatique avec le lien de paiement.
+                  </p>
+                </div>
+              )}
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.whatsapp_notifications_enabled === 'true'}
+                  onChange={e => setForm(p => ({ ...p, whatsapp_notifications_enabled: String(e.target.checked) }))}
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-emerald-400">Activer les relances WhatsApp</p>
+                  <p className="text-[10px] text-emerald-500/80">
+                    Indispensable pour envoyer. Envoi uniquement aux clients ayant consenti — jamais de spam. Désactivable à tout moment.
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
         )}

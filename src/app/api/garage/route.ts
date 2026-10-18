@@ -39,6 +39,7 @@ export async function PUT(request: Request) {
         ...(body.next_quote_number !== undefined && { next_quote_number: Number(body.next_quote_number) }),
         ...(body.next_order_number !== undefined && { next_order_number: Number(body.next_order_number) }),
         ...(body.invoice_footer !== undefined && { invoice_footer: body.invoice_footer }),
+        ...(body.whatsapp_notifications_enabled !== undefined && { whatsapp_notifications_enabled: Boolean(body.whatsapp_notifications_enabled) }),
       },
     });
 

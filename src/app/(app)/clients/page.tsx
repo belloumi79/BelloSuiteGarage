@@ -40,7 +40,8 @@ export default function ClientsPage() {
     city: '',
     tax_id: '',
     payment_terms_days: 30,
-    discount_percent: 0
+    discount_percent: 0,
+    whatsapp_opt_in: false
   });
 
   const loadData = useCallback(async () => {
@@ -80,7 +81,8 @@ export default function ClientsPage() {
       city: '',
       tax_id: '',
       payment_terms_days: 30,
-      discount_percent: 0
+      discount_percent: 0,
+      whatsapp_opt_in: false
     });
     setEditingClient(null);
   };
@@ -230,7 +232,8 @@ export default function ClientsPage() {
                                 city: client.city || '',
                                 tax_id: client.tax_id || '',
                                 payment_terms_days: client.payment_terms_days ?? 30,
-                                discount_percent: client.discount_percent
+                                discount_percent: client.discount_percent,
+                                whatsapp_opt_in: client.whatsapp_opt_in || false
                               });
                               setIsClientModalOpen(true);
                             }}
@@ -296,7 +299,8 @@ export default function ClientsPage() {
                             city: client.city || '',
                             tax_id: client.tax_id || '',
                             payment_terms_days: client.payment_terms_days ?? 30,
-                            discount_percent: client.discount_percent
+                            discount_percent: client.discount_percent,
+                            whatsapp_opt_in: client.whatsapp_opt_in || false
                           });
                           setIsClientModalOpen(true);
                         }}
@@ -500,6 +504,27 @@ export default function ClientsPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none input-touch"
                   />
                 </div>
+              </div>
+
+              {/* WhatsApp Opt-in client (Loi 2004-5) — J0 acquisition copy */}
+              <div className="bg-emerald-900/20 border border-emerald-800/50 rounded-xl p-3 space-y-1">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={clientForm.whatsapp_opt_in}
+                    onChange={(e) => setClientForm(prev => ({ ...prev, whatsapp_opt_in: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-emerald-400">Relances automatiques par WhatsApp</p>
+                    <p className="text-[10px] text-emerald-500/80">
+                      Dès qu&apos;une facture dépasse son échéance, ce client reçoit un rappel avec le montant, l&apos;échéance et un lien de paiement en 1 clic — levier n°1 de cash-flow
+                    </p>
+                    <p className="text-[10px] text-emerald-500/60 mt-0.5">
+                      Consentement individuel requis. Désactivable à tout moment.
+                    </p>
+                  </div>
+                </label>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-800 sticky bottom-0 bg-slate-900 py-3 -mx-4 sm:-mx-6 px-4 sm:px-6">

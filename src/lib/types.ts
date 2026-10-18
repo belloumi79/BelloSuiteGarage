@@ -19,6 +19,7 @@ export interface Client {
   payment_terms_days: number | null;
   discount_percent: number;
   active: boolean;
+  whatsapp_opt_in: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -138,6 +139,8 @@ export interface Garage {
   subscription_renewal_date: string | null;
   activation_code: string | null;
   suspended_at: string | null;
+  // WhatsApp notifications — kill-switch tenant (Loi 2004-5 : double gate avec opt-in client)
+  whatsapp_notifications_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

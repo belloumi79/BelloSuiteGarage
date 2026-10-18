@@ -258,14 +258,14 @@ async function preprocessVariants(src: string): Promise<string[]> {
 }
 
 // ─── OCR engine ──────────────────────────────────────────────────────────────
-// Run a single OCR pass
+// Run a single OCR pass — Tesseract.js v7 API (no '1' param)
 async function ocrPass(
   imageData: string,
   lang: string,
   psm: number,
   whitelist?: string
 ): Promise<string> {
-  const worker = await createWorker(lang, 1);
+  const worker = await createWorker(lang); // v7: no '1' param
   const params: Record<string, string> = {
     tessedit_pageseg_mode: String(psm),
   };
@@ -298,50 +298,46 @@ async function runEasyOCR(src: string): Promise<string> {
 }
 
 // ─── Dual-pass Tesseract ─────────────────────────────────────────────────────
-// English for numbers/Latin + Arabic for تونس (no whitelist for Arabic)
+// English (digits/Latin) + French + Arabic — 3 passes max, PSM 7 single line
 async function runDualPassOCR(imageData: string): Promise<string> {
-  // Pass 1: English — digits + uppercase letters (plate characters)
+  // Pass 1: English — digits + uppercase letters (plate characters), PSM 7
   const engText = await ocrPass(
     imageData,
     'eng',
-    7, // PSM 7: single text line
+    7,
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'
   );
 
-  // Pass 2: Arabic — NO whitelist, let Tesseract use its full Arabic model
-  // PSM 6: assume a single uniform block of text (better for plates)
-  const araText = await ocrPass(imageData, 'ara', 6);
-
-  // Combine: try to extract plate from English text first
   let plate = extractPlate(engText);
   if (plate) return plate;
 
-  // Try Arabic text
+  // Pass 2: French — plates sometimes have accented context (TUNIS)
+  const fraText = await ocrPass(imageData, 'fra', 7, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -.');
+  plate = extractPlate(fraText);
+  if (plate) return plate;
+
+  // Pass 3: Arabic — no whitelist, PSM 6 uniform block (for تونس plates)
+  const araText = await ocrPass(imageData, 'ara', 6);
   plate = extractPlate(araText);
   if (plate) return plate;
 
-  // Try combining both
-  const combined = `${engText}\n${araText}`;
-  plate = extractPlate(combined);
-  if (plate) return plate;
-
-  // Try PSM 13 (raw line) on Arabic
-  const araRaw = await ocrPass(imageData, 'ara', 13);
-  plate = extractPlate(araRaw);
-  if (plate) return plate;
-
-  return '';
+  // Try combining all three
+  const combined = `${engText}\n${fraText}\n${araText}`;
+  return extractPlate(combined);
 }
 
 // ─── Full OCR pipeline ───────────────────────────────────────────────────────
+// Order: 1) Server EasyOCR (best for Arabic+Latin mix, multi-lang)
+//        2) Client Tesseract (offline fallback), max 2 preprocessing variants
 async function runFullOCR(src: string): Promise<string> {
-  // 1. Try PaddleOCR if server is running
-  const paddleResult = await runEasyOCR(src);
-  if (paddleResult) return paddleResult;
+  // 1. Server-side EasyOCR (ar+en+fr) — most reliable for Tunisian plates
+  const serverResult = await runEasyOCR(src);
+  if (serverResult) return serverResult;
 
-  // 2. Fallback: Tesseract.js with multiple preprocessing variants
+  // 2. Client Tesseract fallback — limited to 2 variants to avoid 40-worker explosion
   const variants = await preprocessVariants(src);
-  for (const variant of variants) {
+  const limited = [variants[0], variants[4]]; // original + CLAHE+binary (best for noisy)
+  for (const variant of limited) {
     const result = await runDualPassOCR(variant);
     if (result) return result;
   }
@@ -415,15 +411,15 @@ export default function PlateScannerModal({ open, onClose, onPlateDetected }: Pl
             const croppedCanvas = cropPlate(img, det.bbox);
             const croppedSrc = croppedCanvas.toDataURL('image/png');
 
-            // Try PaddleOCR first
-            setStatusText(`PaddleOCR plaque ${i + 1}…`);
+            // Try server EasyOCR first (multi-lang ar+en+fr)
+            setStatusText(`EasyOCR plaque ${i + 1}…`);
             plate = await runEasyOCR(croppedSrc);
 
-            // Fallback: Tesseract dual-pass with preprocessing variants
+            // Fallback: Tesseract dual-pass, max 2 variants (eng+fra+ara)
             if (!plate) {
               setStatusText(`Tesseract OCR plaque ${i + 1}…`);
               const variants = await preprocessVariants(croppedSrc);
-              for (const variant of variants) {
+              for (const variant of [variants[0], variants[4]]) {
                 plate = await runDualPassOCR(variant);
                 if (plate) break;
               }

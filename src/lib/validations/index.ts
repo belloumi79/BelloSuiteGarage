@@ -32,6 +32,7 @@ export const clientBaseSchema = z.object({
     notes: z.string().optional(),
     payment_terms_days: z.number().int().min(0).default(0),
     discount_percent: z.number().min(0).max(100).default(0),
+    whatsapp_opt_in: z.boolean().default(false),
 });
 
 export const clientCreateSchema = clientBaseSchema.refine(

@@ -24,7 +24,7 @@ const ALLOWED_MIME = [
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('Authorization') || '';
-  const token = authHeader.startsWith('Bearer ***') ? authHeader.slice(7) : '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!API_TOKEN || token !== API_TOKEN) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

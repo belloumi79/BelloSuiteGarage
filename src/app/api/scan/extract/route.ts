@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   try {
     paResponse = await fetch(`${PA_URL}/api/extract-invoice`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ***${API_TOKEN}` },
+      headers: { Authorization: `Bearer ${API_TOKEN}` },
       body: paFormData,
       signal: AbortSignal.timeout(PA_TIMEOUT_MS),
     });

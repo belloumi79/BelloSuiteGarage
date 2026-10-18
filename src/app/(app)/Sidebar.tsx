@@ -10,6 +10,7 @@ import {
   Car,
   Package,
   FileText,
+  ScanLine,
   Calendar,
   Settings,
   LogOut,
@@ -27,6 +28,7 @@ const navItems = [
   { path: '/vehicles', label: 'Véhicules', icon: Car },
   { path: '/items', label: 'Articles & Stock', icon: Package },
   { path: '/documents', label: 'Documents & Devis', icon: FileText },
+  { path: '/scan', label: 'Scan Facture', icon: ScanLine },
   { path: '/planning', label: 'Planning', icon: Calendar },
 ];
 
